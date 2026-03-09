@@ -136,6 +136,7 @@ class AboutView extends StatelessWidget {
                 'fl_chart • pdf • printing',
                 'path_provider • share_plus • file_picker',
                 'image_picker • permission_handler',
+                'mobile_scanner • barcode_widget • gal',
               ],
             ),
 
@@ -146,6 +147,8 @@ class AboutView extends StatelessWidget {
             const SizedBox(height: 12),
             _featureItem('✓ Manajemen Produk', 'Kelola stok barang dengan mudah'),
             const SizedBox(height: 8),
+            _featureItem('✓ Barcode & QR Code', 'Generate, scan & download barcode produk'),
+            const SizedBox(height: 8),
             _featureItem('✓ Penjualan & Checkout', 'Proses transaksi cepat dengan printer'),
             const SizedBox(height: 8),
             _featureItem('✓ Laporan Keuangan', 'Analisis grafik dan export PDF'),
@@ -153,6 +156,10 @@ class AboutView extends StatelessWidget {
             _featureItem('✓ Kelola Pengeluaran', 'Track biaya operasional bisnis'),
             const SizedBox(height: 8),
             _featureItem('✓ Cloud Backup', 'Sinkronisasi otomatis ke server'),
+            const SizedBox(height: 8),
+            _featureItem('✓ Kalkulator Standar', 'Kalkulator iOS-style dengan swipe-delete'),
+            const SizedBox(height: 8),
+            _featureItem('✓ Kalkulator Keuangan', 'Kembalian, diskon, margin, pajak & markup'),
             const SizedBox(height: 8),
             _featureItem('✓ Offline Mode', 'Aplikasi jalan tanpa internet'),
 
@@ -410,6 +417,8 @@ class AboutView extends StatelessWidget {
     try {
       if (await canLaunchUrl(whatsappUrl)) {
         await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+      } else {
+        throw 'Tidak dapat membuka WhatsApp';
       }
     } catch (e) {
       debugPrint('Error launching WhatsApp: $e');
@@ -427,6 +436,8 @@ class AboutView extends StatelessWidget {
     try {
       if (await canLaunchUrl(emailUri)) {
         await launchUrl(emailUri);
+      } else {
+        throw 'Tidak dapat membuka email';
       }
     } catch (e) {
       debugPrint('Error launching email: $e');
@@ -438,6 +449,9 @@ class AboutView extends StatelessWidget {
     try {
       if (await canLaunchUrl(websiteUrl)) {
         await launchUrl(websiteUrl, mode: LaunchMode.externalApplication);
+      } else {
+        // Fallback: try to launch with webViewController
+        await launchUrl(websiteUrl);
       }
     } catch (e) {
       debugPrint('Error launching website: $e');

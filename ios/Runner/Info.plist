@@ -57,6 +57,13 @@
 	<string>Kamera digunakan untuk scan barcode produk</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Izin diperlukan untuk menyimpan barcode ke galeri foto</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>https</string>
+		<string>http</string>
+		<string>mailto</string>
+		<string>whatsapp</string>
+	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
