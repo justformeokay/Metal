@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/product.dart';
 import '../services/database_service.dart';
@@ -87,6 +88,31 @@ class ProductController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Generate a unique EAN-13 barcode, retrying if a duplicate exists.
+  /// Exposed publicly so views can also use it (e.g. BarcodeDetailView).
+  Future<String> generateUniqueBarcode() => _generateUniqueBarcode();
+
+  Future<String> _generateUniqueBarcode() async {
+    final rng = Random();
+    while (true) {
+      final buffer = StringBuffer('20');
+      for (var i = 0; i < 10; i++) {
+        buffer.write(rng.nextInt(10));
+      }
+      final code12 = buffer.toString();
+      int sum = 0;
+      for (int i = 0; i < 12; i++) {
+        final digit = int.parse(code12[i]);
+        sum += (i % 2 == 0) ? digit : digit * 3;
+      }
+      final checkDigit = (10 - (sum % 10)) % 10;
+      final code = '$code12$checkDigit';
+      // Ensure no duplicate
+      final existing = await _db.getProductByBarcode(code);
+      if (existing == null) return code;
+    }
+  }
+
   Future<void> addProduct({
     required String name,
     required double costPrice,
@@ -96,7 +122,10 @@ class ProductController extends ChangeNotifier {
     DateTime? expiryDate,
     String unit = 'pcs',
     String category = 'Umum',
+    String? scannedBarcode,
   }) async {
+    // Use scanned barcode from packaging, or auto-generate one
+    final barcode = scannedBarcode ?? await _generateUniqueBarcode();
     final product = Product(
       id: _uuid.v4(),
       name: name,
@@ -107,6 +136,7 @@ class ProductController extends ChangeNotifier {
       expiryDate: expiryDate,
       unit: unit,
       category: category,
+      barcode: barcode,
     );
     await _db.insertProduct(product);
     await loadProducts();
@@ -125,5 +155,10 @@ class ProductController extends ChangeNotifier {
   Future<void> updateStock(String productId, int newQuantity) async {
     await _db.updateStock(productId, newQuantity);
     await loadProducts();
+  }
+
+  /// Look up a product by its barcode/QR code.
+  Future<Product?> getProductByBarcode(String barcode) async {
+    return _db.getProductByBarcode(barcode);
   }
 }

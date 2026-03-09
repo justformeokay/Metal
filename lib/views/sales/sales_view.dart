@@ -5,6 +5,7 @@ import '../../controllers/transaction_controller.dart';
 import '../../utils/formatters.dart';
 import '../../utils/theme.dart';
 import '../../widgets/product_tile.dart';
+import '../barcode/barcode_scanner_view.dart';
 import '../receipt/receipt_preview_view.dart';
 
 /// Simple POS screen — select products, adjust qty, checkout.
@@ -53,12 +54,32 @@ class _SalesViewState extends State<SalesView> {
           // ─── Search ────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: TextField(
-              onChanged: (v) => setState(() => _search = v),
-              decoration: const InputDecoration(
-                hintText: 'Cari produk...',
-                prefixIcon: Icon(Icons.search_rounded),
-              ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    onChanged: (v) => setState(() => _search = v),
+                    decoration: const InputDecoration(
+                      hintText: 'Cari produk...',
+                      prefixIcon: Icon(Icons.search_rounded),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Barcode scan button
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: IconButton(
+                    onPressed: () => _scanBarcode(context),
+                    icon: const Icon(Icons.qr_code_scanner_rounded,
+                        color: Colors.white),
+                    tooltip: 'Scan Barcode',
+                  ),
+                ),
+              ],
             ),
           ),
 
@@ -247,6 +268,42 @@ class _SalesViewState extends State<SalesView> {
         },
       ),
     );
+  }
+
+  /// Open barcode scanner and add scanned product to cart.
+  Future<void> _scanBarcode(BuildContext context) async {
+    final code = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => const BarcodeScannerView()),
+    );
+    if (code == null || !mounted) return;
+
+    final prodCtrl = context.read<ProductController>();
+    final txCtrl = context.read<TransactionController>();
+    final product = await prodCtrl.getProductByBarcode(code);
+
+    if (product != null) {
+      txCtrl.addToCart(product);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${product.name} ditambahkan ke keranjang'),
+            duration: const Duration(seconds: 1),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Produk dengan barcode "$code" tidak ditemukan'),
+            backgroundColor: AppTheme.dangerColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _checkout(BuildContext context) async {

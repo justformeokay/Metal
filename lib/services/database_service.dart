@@ -59,7 +59,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createTables,
       onUpgrade: _upgradeTables,
     );
@@ -78,10 +78,13 @@ class DatabaseService {
         category TEXT NOT NULL DEFAULT 'Umum',
         minStock INTEGER NOT NULL DEFAULT 5,
         expiryDate TEXT,
+        barcode TEXT,
         createdAt TEXT NOT NULL,
         updatedAt TEXT NOT NULL
       )
     ''');
+
+    await db.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_barcode ON products(barcode) WHERE barcode IS NOT NULL');
 
     await db.execute('''
       CREATE TABLE transactions (
@@ -143,6 +146,10 @@ class DatabaseService {
       await db.execute('ALTER TABLE products ADD COLUMN minStock INTEGER NOT NULL DEFAULT 5');
       await db.execute('ALTER TABLE products ADD COLUMN expiryDate TEXT');
     }
+    if (oldVersion < 3) {
+      await db.execute('ALTER TABLE products ADD COLUMN barcode TEXT');
+      await db.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_barcode ON products(barcode) WHERE barcode IS NOT NULL');
+    }
   }
 
   // ─── Products ───────────────────────────────────────────────
@@ -181,6 +188,15 @@ class DatabaseService {
     final db = await database;
     await db.update('products', {'stockQuantity': newQuantity},
         where: 'id = ?', whereArgs: [productId]);
+  }
+
+  /// Look up a product by its barcode value.
+  Future<Product?> getProductByBarcode(String barcode) async {
+    final db = await database;
+    final maps = await db.query('products',
+        where: 'barcode = ?', whereArgs: [barcode]);
+    if (maps.isEmpty) return null;
+    return Product.fromMap(maps.first);
   }
 
   Future<int> getTotalStockItems() async {

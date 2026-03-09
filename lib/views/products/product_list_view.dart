@@ -4,6 +4,7 @@ import '../../controllers/product_controller.dart';
 import '../../widgets/product_tile.dart';
 import '../../widgets/empty_state.dart';
 import '../../utils/theme.dart';
+import '../barcode/barcode_detail_view.dart';
 import 'product_form_view.dart';
 
 /// Product list with search, category filter, and CRUD actions.
@@ -114,22 +115,61 @@ class _ProductListViewState extends State<ProductListView> {
                           return ProductTile(
                             product: product,
                             onTap: () => _openForm(context, product: product),
-                            trailing: PopupMenuButton(
+                            trailing: PopupMenuButton<String>(
                               borderRadius: BorderRadius.circular(10.0),
-                              color: Colors.white,
                               itemBuilder: (_) => [
-                                const PopupMenuItem(
-                                  value: 'edit',
-                                  child: Text('Edit'),
+                                PopupMenuItem<String>(
+                                  value: 'barcode',
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.qr_code_rounded, size: 18),
+                                      const SizedBox(width: 8),
+                                      Text('Barcode',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium),
+                                    ],
+                                  ),
                                 ),
-                                const PopupMenuItem(
+                                PopupMenuItem<String>(
+                                  value: 'edit',
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.edit_rounded, size: 18),
+                                      const SizedBox(width: 8),
+                                      Text('Edit',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium),
+                                    ],
+                                  ),
+                                ),
+                                PopupMenuItem<String>(
                                   value: 'delete',
-                                  child: Text('Hapus',
-                                      style: TextStyle(color: Colors.red)),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.delete_outline_rounded,
+                                          size: 18, color: Colors.red),
+                                      const SizedBox(width: 8),
+                                      Text('Hapus',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium
+                                              ?.copyWith(color: Colors.red)),
+                                    ],
+                                  ),
                                 ),
                               ],
                               onSelected: (val) {
-                                if (val == 'edit') {
+                                if (val == 'barcode') {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          BarcodeDetailView(product: product),
+                                    ),
+                                  );
+                                } else if (val == 'edit') {
                                   _openForm(context, product: product);
                                 } else if (val == 'delete') {
                                   _confirmDelete(context, product.id, product.name);

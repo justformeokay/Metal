@@ -2,6 +2,9 @@
     <!-- Internet for API calls -->
     <uses-permission android:name="android.permission.INTERNET"/>
     
+    <!-- Camera for barcode scanning -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    
     <!-- Bluetooth for printer connectivity -->
     <uses-permission android:name="android.permission.BLUETOOTH"/>
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>

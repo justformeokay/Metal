@@ -9,6 +9,7 @@ class Product {
   final String category;
   final int minStock; // minimum stock threshold per product
   final DateTime? expiryDate; // optional expiration date
+  final String? barcode; // barcode / QR code value
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -22,6 +23,7 @@ class Product {
     this.category = 'Umum',
     this.minStock = 5,
     this.expiryDate,
+    this.barcode,
     DateTime? createdAt,
     DateTime? updatedAt,
   })  : createdAt = createdAt ?? DateTime.now(),
@@ -65,6 +67,8 @@ class Product {
     int? minStock,
     DateTime? expiryDate,
     bool clearExpiryDate = false,
+    String? barcode,
+    bool clearBarcode = false,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -78,6 +82,7 @@ class Product {
       category: category ?? this.category,
       minStock: minStock ?? this.minStock,
       expiryDate: clearExpiryDate ? null : (expiryDate ?? this.expiryDate),
+      barcode: clearBarcode ? null : (barcode ?? this.barcode),
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
     );
@@ -94,6 +99,7 @@ class Product {
       'category': category,
       'minStock': minStock,
       'expiryDate': expiryDate?.toIso8601String(),
+      'barcode': barcode,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
@@ -112,6 +118,7 @@ class Product {
       expiryDate: map['expiryDate'] != null
           ? DateTime.tryParse(map['expiryDate'] as String)
           : null,
+      barcode: map['barcode'] as String?,
       createdAt: DateTime.parse(map['createdAt'] as String),
       updatedAt: DateTime.parse(map['updatedAt'] as String),
     );

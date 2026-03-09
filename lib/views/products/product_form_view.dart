@@ -5,6 +5,7 @@ import '../../controllers/product_controller.dart';
 import '../../models/product.dart';
 import '../../utils/constants.dart';
 import '../../utils/theme.dart';
+import '../barcode/barcode_scanner_view.dart';
 
 /// Add / Edit product form.
 class ProductFormView extends StatefulWidget {
@@ -26,6 +27,7 @@ class _ProductFormViewState extends State<ProductFormView> {
   late String _unit;
   late String _category;
   DateTime? _expiryDate;
+  String? _scannedBarcode;
 
   bool get isEditing => widget.product != null;
 
@@ -44,6 +46,7 @@ class _ProductFormViewState extends State<ProductFormView> {
     _unit = widget.product?.unit ?? 'pcs';
     _category = widget.product?.category ?? 'Umum';
     _expiryDate = widget.product?.expiryDate;
+    _scannedBarcode = widget.product?.barcode;
   }
 
   @override
@@ -196,6 +199,11 @@ class _ProductFormViewState extends State<ProductFormView> {
                   .toList(),
               onChanged: (v) => setState(() => _category = v ?? 'Umum'),
             ),
+            const SizedBox(height: 16),
+
+            // ─── Barcode section ─────────────────────────
+            _buildBarcodeSection(),
+
             const SizedBox(height: 32),
 
             // Save button
@@ -224,6 +232,135 @@ class _ProductFormViewState extends State<ProductFormView> {
     }
   }
 
+  Widget _buildBarcodeSection() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final hasBarcode = _scannedBarcode != null && _scannedBarcode!.isNotEmpty;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: hasBarcode
+              ? AppTheme.primaryColor.withValues(alpha: 0.3)
+              : (isDark ? Colors.grey.shade800 : Colors.grey.shade300),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.qr_code_rounded,
+                  size: 20,
+                  color: isDark ? Colors.white70 : Colors.grey.shade700),
+              const SizedBox(width: 8),
+              Text(
+                'Barcode Produk',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : Colors.grey.shade800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (hasBarcode) ...[
+            // Show scanned barcode
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded,
+                      size: 18, color: AppTheme.primaryColor),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _scannedBarcode!,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () => setState(() => _scannedBarcode = null),
+                    child: const Icon(Icons.close_rounded,
+                        size: 18, color: Colors.red),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Option to re-scan
+            SizedBox(
+              width: double.infinity,
+              child: TextButton.icon(
+                onPressed: _scanPackageBarcode,
+                icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
+                label: const Text('Scan Ulang dari Kemasan'),
+              ),
+            ),
+          ] else ...[
+            // Two options: scan or auto-generate
+            Text(
+              'Scan barcode dari kemasan produk, atau biarkan kosong untuk generate otomatis.',
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _scanPackageBarcode,
+                icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
+                label: const Text('Scan dari Kemasan'),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.5),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _scanPackageBarcode() async {
+    final code = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => const BarcodeScannerView()),
+    );
+    if (code == null || !mounted) return;
+
+    // Check if barcode is already used by another product
+    final ctrl = context.read<ProductController>();
+    final existing = await ctrl.getProductByBarcode(code);
+    if (existing != null && existing.id != widget.product?.id) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Barcode sudah dipakai oleh "${existing.name}"'),
+          backgroundColor: AppTheme.dangerColor,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _scannedBarcode = code);
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -240,6 +377,7 @@ class _ProductFormViewState extends State<ProductFormView> {
         clearExpiryDate: _expiryDate == null,
         unit: _unit,
         category: _category,
+        barcode: _scannedBarcode,
       );
       await ctrl.updateProduct(updated);
     } else {
@@ -252,6 +390,7 @@ class _ProductFormViewState extends State<ProductFormView> {
         expiryDate: _expiryDate,
         unit: _unit,
         category: _category,
+        scannedBarcode: _scannedBarcode,
       );
     }
 
