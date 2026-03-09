@@ -13,6 +13,8 @@ import '../../widgets/loading_indicator.dart';
 import '../../widgets/transaction_list_item.dart';
 import '../../widgets/empty_state.dart';
 import '../products/stock_alerts_view.dart';
+import '../calculator/standard_calculator_view.dart';
+import '../calculator/finance_calculator_view.dart';
 
 /// Main dashboard screen — overview of today's business metrics.
 class DashboardView extends StatefulWidget {
@@ -397,6 +399,42 @@ class _DashboardViewState extends State<DashboardView> {
                   ),
                   const SizedBox(height: 24),
 
+                  // ─── Quick Access Tools ────────────────────
+                  _sectionTitle('Tools'),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildToolCard(
+                          icon: Icons.calculate_rounded,
+                          color: const Color(0xFFFF9F0A),
+                          title: 'Kalkulator',
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const StandardCalculatorView(),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildToolCard(
+                          icon: Icons.payments_rounded,
+                          color: const Color(0xFF10B981),
+                          title: 'Keuangan',
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const FinanceCalculatorView(),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
                   // ─── Stock & Expiry Alerts ─────────────────
                   if (prodCtrl.hasAlerts) ...[
                     _sectionTitle('Peringatan Inventori'),
@@ -687,6 +725,51 @@ class _DashboardViewState extends State<DashboardView> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  /// Quick tool shortcut card
+  Widget _buildToolCard({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.15)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: color.withValues(alpha: 0.5), size: 20),
+          ],
+        ),
       ),
     );
   }

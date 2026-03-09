@@ -4,6 +4,7 @@ import '../models/product.dart';
 import '../models/transaction.dart';
 import '../models/expense.dart';
 import '../models/business_profile.dart';
+import '../models/calc_history.dart';
 
 /// SQLite database service — single source of truth for all local data.
 ///
@@ -59,7 +60,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _createTables,
       onUpgrade: _upgradeTables,
     );
@@ -130,6 +131,16 @@ class DatabaseService {
       )
     ''');
 
+    await db.execute('''
+      CREATE TABLE calc_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        type TEXT NOT NULL,
+        expression TEXT NOT NULL,
+        result TEXT NOT NULL,
+        createdAt TEXT NOT NULL
+      )
+    ''');
+
     // Insert default profile
     await db.insert('business_profile', {
       'id': 1,
@@ -149,6 +160,17 @@ class DatabaseService {
     if (oldVersion < 3) {
       await db.execute('ALTER TABLE products ADD COLUMN barcode TEXT');
       await db.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_barcode ON products(barcode) WHERE barcode IS NOT NULL');
+    }
+    if (oldVersion < 4) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS calc_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          type TEXT NOT NULL,
+          expression TEXT NOT NULL,
+          result TEXT NOT NULL,
+          createdAt TEXT NOT NULL
+        )
+      ''');
     }
   }
 
@@ -411,6 +433,30 @@ class DatabaseService {
       await db.rawQuery('SELECT COUNT(*) FROM transactions'),
     ) ?? 0;
     return productCount == 0 && txCount == 0;
+  }
+
+  // ─── Calculator History ────────────────────────────────────
+
+  Future<List<CalcHistory>> getCalcHistory() async {
+    final db = await database;
+    final maps = await db.query('calc_history', orderBy: 'id DESC', limit: 20);
+    return maps.map((m) => CalcHistory.fromMap(m)).toList();
+  }
+
+  Future<void> insertCalcHistory(CalcHistory entry) async {
+    final db = await database;
+    await db.insert('calc_history', entry.toMap());
+    // Keep only latest 20
+    await db.rawDelete('''
+      DELETE FROM calc_history WHERE id NOT IN (
+        SELECT id FROM calc_history ORDER BY id DESC LIMIT 20
+      )
+    ''');
+  }
+
+  Future<void> clearCalcHistory() async {
+    final db = await database;
+    await db.delete('calc_history');
   }
 
   // ─── Backup & Restore ──────────────────────────────────────
