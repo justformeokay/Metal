@@ -1,0 +1,18 @@
+{
+    "name": "labaku/api",
+    "description": "Labaku Small Business Management REST API (Native PHP)",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": "^8.0"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    },
+    "scripts": {
+        "post-install-cmd": [
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
+        ]
+    }
+}

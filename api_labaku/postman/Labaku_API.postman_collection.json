@@ -1,0 +1,604 @@
+{
+  "info": {
+    "name": "Labaku API",
+    "_postman_id": "labaku-api-collection-v1",
+    "description": "REST API untuk aplikasi LabaKu — Small Business Management\nBase URL: https://ucs.mathlab.id/api\n\n📌 Cara pakai:\n1. Import collection ini ke Postman\n2. Import file Labaku_API.postman_environment.json\n3. Set environment ke \"Labaku API - Production\"\n4. Jalankan request Login → token otomatis tersimpan ke variable {{token}}",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://ucs.mathlab.id/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.success && json.data && json.data.token) {",
+                  "    pm.collectionVariables.set('token', json.data.token);",
+                  "    pm.collectionVariables.set('user_id', json.data.user.id);",
+                  "    console.log('✅ Token saved from register:', json.data.token);",
+                  "}",
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Has token', () => pm.expect(json.data.token).to.be.a('string'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Budi Santoso\",\n  \"email\": \"test@example.com\",\n  \"phone\": \"081234567890\",\n  \"password\": \"password123\",\n  \"password_confirmation\": \"password123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["register"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.success && json.data && json.data.token) {",
+                  "    pm.collectionVariables.set('token', json.data.token);",
+                  "    pm.collectionVariables.set('user_id', json.data.user.id);",
+                  "    console.log('✅ Token saved:', json.data.token);",
+                  "}",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has token', () => pm.expect(json.data.token).to.be.a('string'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["login"]
+            }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["forgot-password"]
+            }
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"RESET_TOKEN_FROM_EMAIL\",\n  \"email\": \"test@example.com\",\n  \"password\": \"newpassword123\",\n  \"password_confirmation\": \"newpassword123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["reset-password"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👤 User Profile",
+      "item": [
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"password123\",\n  \"new_password\": \"newpassword456\",\n  \"new_password_confirmation\": \"newpassword456\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/change-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "change-password"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏪 Store",
+      "item": [
+        {
+          "name": "Create Store",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.success && json.data && json.data.id) {",
+                  "    pm.collectionVariables.set('store_id', json.data.id);",
+                  "    console.log('✅ Store ID saved:', json.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Toko Sumber Rezeki\",\n  \"address\": \"Jl. Merdeka No. 10, Jakarta\",\n  \"phone\": \"081234567890\",\n  \"currency\": \"IDR\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/store/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["store", "create"]
+            }
+          }
+        },
+        {
+          "name": "Get My Store",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/store/my-store",
+              "host": ["{{baseUrl}}"],
+              "path": ["store", "my-store"]
+            }
+          }
+        },
+        {
+          "name": "Update Store",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Toko Sumber Rezeki Updated\",\n  \"address\": \"Jl. Merdeka No. 12, Jakarta\",\n  \"phone\": \"081234567891\",\n  \"currency\": \"IDR\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/store/update",
+              "host": ["{{baseUrl}}"],
+              "path": ["store", "update"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📦 Products",
+      "item": [
+        {
+          "name": "Create Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.success && json.data && json.data.id) {",
+                  "    pm.collectionVariables.set('product_id', json.data.id);",
+                  "    console.log('✅ Product ID saved:', json.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mie Goreng Indomie\",\n  \"sku\": \"MGI-001\",\n  \"category\": \"Makanan\",\n  \"unit\": \"pcs\",\n  \"purchase_price\": 2500,\n  \"selling_price\": 3500,\n  \"stock\": 100,\n  \"min_stock\": 10,\n  \"description\": \"Mie goreng rasa ayam bawang\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/products/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "create"]
+            }
+          }
+        },
+        {
+          "name": "List Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/list?page=1&limit=20&search=&category=",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "list"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "search", "value": "", "description": "Cari nama atau SKU" },
+                { "key": "category", "value": "", "description": "Filter berdasarkan kategori" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Product",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{product_id}},\n  \"name\": \"Mie Goreng Indomie Updated\",\n  \"sku\": \"MGI-001\",\n  \"category\": \"Makanan\",\n  \"unit\": \"pcs\",\n  \"purchase_price\": 2500,\n  \"selling_price\": 4000,\n  \"stock\": 150,\n  \"min_stock\": 10,\n  \"description\": \"Updated description\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/products/update",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "update"]
+            }
+          }
+        },
+        {
+          "name": "Delete Product",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{product_id}}\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/products/delete",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "delete"]
+            }
+          }
+        },
+        {
+          "name": "Low Stock Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/low-stock",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "low-stock"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💰 Transactions",
+      "item": [
+        {
+          "name": "Create Transaction",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.success && json.data && json.data.id) {",
+                  "    pm.collectionVariables.set('transaction_id', json.data.id);",
+                  "    console.log('✅ Transaction ID saved:', json.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_name\": \"Budi Santoso\",\n  \"payment_method\": \"cash\",\n  \"notes\": \"Transaksi reguler\",\n  \"items\": [\n    {\n      \"product_id\": {{product_id}},\n      \"quantity\": 5,\n      \"selling_price\": 3500\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/transactions/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["transactions", "create"]
+            }
+          }
+        },
+        {
+          "name": "List Transactions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/transactions/list?page=1&limit=20&start_date=&end_date=",
+              "host": ["{{baseUrl}}"],
+              "path": ["transactions", "list"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "start_date", "value": "", "description": "Format: YYYY-MM-DD" },
+                { "key": "end_date", "value": "", "description": "Format: YYYY-MM-DD" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Transaction Detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/transactions/detail?id={{transaction_id}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["transactions", "detail"],
+              "query": [
+                { "key": "id", "value": "{{transaction_id}}" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🧾 Expenses",
+      "item": [
+        {
+          "name": "Create Expense",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.success && json.data && json.data.id) {",
+                  "    pm.collectionVariables.set('expense_id', json.data.id);",
+                  "    console.log('✅ Expense ID saved:', json.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category\": \"Operasional\",\n  \"amount\": 50000,\n  \"description\": \"Bayar listrik toko\",\n  \"date\": \"2026-03-09\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/expenses/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["expenses", "create"]
+            }
+          }
+        },
+        {
+          "name": "List Expenses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/expenses/list?page=1&limit=20&start_date=&end_date=&category=",
+              "host": ["{{baseUrl}}"],
+              "path": ["expenses", "list"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "start_date", "value": "", "description": "Format: YYYY-MM-DD" },
+                { "key": "end_date", "value": "", "description": "Format: YYYY-MM-DD" },
+                { "key": "category", "value": "", "description": "Filter kategori pengeluaran" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Expense",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{expense_id}},\n  \"category\": \"Operasional\",\n  \"amount\": 75000,\n  \"description\": \"Bayar listrik toko + air\",\n  \"date\": \"2026-03-09\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/expenses/update",
+              "host": ["{{baseUrl}}"],
+              "path": ["expenses", "update"]
+            }
+          }
+        },
+        {
+          "name": "Delete Expense",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{expense_id}}\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/expenses/delete",
+              "host": ["{{baseUrl}}"],
+              "path": ["expenses", "delete"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Reports",
+      "item": [
+        {
+          "name": "Profit Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reports/profit?start_date=2026-03-01&end_date=2026-03-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["reports", "profit"],
+              "query": [
+                { "key": "start_date", "value": "2026-03-01", "description": "Format: YYYY-MM-DD" },
+                { "key": "end_date", "value": "2026-03-31", "description": "Format: YYYY-MM-DD" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sales Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reports/sales?start_date=2026-03-01&end_date=2026-03-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["reports", "sales"],
+              "query": [
+                { "key": "start_date", "value": "2026-03-01", "description": "Format: YYYY-MM-DD" },
+                { "key": "end_date", "value": "2026-03-31", "description": "Format: YYYY-MM-DD" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Expenses Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reports/expenses?start_date=2026-03-01&end_date=2026-03-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["reports", "expenses"],
+              "query": [
+                { "key": "start_date", "value": "2026-03-01", "description": "Format: YYYY-MM-DD" },
+                { "key": "end_date", "value": "2026-03-31", "description": "Format: YYYY-MM-DD" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏠 Dashboard",
+      "item": [
+        {
+          "name": "Dashboard Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/dashboard/summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["dashboard", "summary"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

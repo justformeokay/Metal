@@ -1,0 +1,15 @@
+# Labaku API - Apache URL Rewriting
+# Routes all requests to index.php for clean URL routing
+
+RewriteEngine On
+
+# Allow Authorization header to pass through
+RewriteCond %{HTTP:Authorization} ^(.*)
+RewriteRule .* - [e=HTTP_AUTHORIZATION:%1]
+
+# Skip rewriting for existing files and directories
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Route all requests to index.php
+RewriteRule ^(.*)$ index.php [QSA,L]
