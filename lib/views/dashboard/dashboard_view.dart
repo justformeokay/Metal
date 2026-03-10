@@ -16,6 +16,7 @@ import '../../widgets/empty_state.dart';
 import '../products/stock_alerts_view.dart';
 import '../calculator/standard_calculator_view.dart';
 import '../calculator/finance_calculator_view.dart';
+import 'transaction_detail_sheet.dart';
 
 /// Main dashboard screen — overview of today's business metrics.
 class DashboardView extends StatefulWidget {
@@ -441,67 +442,111 @@ class _DashboardViewState extends State<DashboardView> {
 
                   // ─── Stock & Expiry Alerts ─────────────────
                   if (prodCtrl.hasAlerts) ...[
-                    _sectionTitle('Peringatan Inventori'),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppTheme.warningColor.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: AppTheme.warningColor.withValues(alpha: 0.2),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Out of stock
-                          if (prodCtrl.outOfStockProducts.isNotEmpty)
-                            _compactAlertRow(
-                              icon: Icons.remove_shopping_cart_rounded,
-                              color: AppTheme.dangerColor,
-                              text: '${prodCtrl.outOfStockProducts.length} stok habis',
-                            ),
-                          // Low stock
-                          if (prodCtrl.lowStockProducts.isNotEmpty)
-                            _compactAlertRow(
-                              icon: Icons.inventory_rounded,
-                              color: AppTheme.warningColor,
-                              text: '${prodCtrl.lowStockProducts.length} stok menipis',
-                            ),
-                          // Expired
-                          if (prodCtrl.expiredProducts.isNotEmpty)
-                            _compactAlertRow(
-                              icon: Icons.event_busy_rounded,
-                              color: AppTheme.dangerColor,
-                              text: '${prodCtrl.expiredProducts.length} kedaluwarsa',
-                            ),
-                          // Expiring soon
-                          if (prodCtrl.expiringSoonProducts.isNotEmpty)
-                            _compactAlertRow(
-                              icon: Icons.schedule_rounded,
-                              color: Colors.orange,
-                              text: '${prodCtrl.expiringSoonProducts.length} segera kedaluwarsa',
-                            ),
-                          const SizedBox(height: 10),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton.icon(
-                              onPressed: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const StockAlertsView(),
-                                ),
-                              ),
-                              icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-                              label: const Text(
-                                'Lihat Detail',
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _sectionTitle('Peringatan Inventori'),
+                        GestureDetector(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const StockAlertsView(),
                             ),
                           ),
-                        ],
-                      ),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Text(
+                                  'Lihat Semua',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.primaryColor,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(
+                                  Icons.arrow_forward_rounded,
+                                  size: 14,
+                                  color: AppTheme.primaryColor,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    // Alert Cards Grid
+                    Column(
+                      children: [
+                        // Row 1: Out of Stock & Low Stock
+                        Row(
+                          children: [
+                            if (prodCtrl.outOfStockProducts.isNotEmpty) ...[
+                              _buildAlertCard(
+                                icon: Icons.remove_shopping_cart_rounded,
+                                color: AppTheme.dangerColor,
+                                bgColor: AppTheme.dangerColor,
+                                count: prodCtrl.outOfStockProducts.length,
+                                label: 'Stok Habis',
+                                subtitle: 'Perlu pembelian ulang',
+                              ),
+                              const SizedBox(width: 12),
+                            ],
+                            if (prodCtrl.lowStockProducts.isNotEmpty)
+                              _buildAlertCard(
+                                icon: Icons.inventory_2_rounded,
+                                color: AppTheme.warningColor,
+                                bgColor: AppTheme.warningColor,
+                                count: prodCtrl.lowStockProducts.length,
+                                label: 'Stok Menipis',
+                                subtitle: 'Kurang dari minimum',
+                              ),
+                            if (prodCtrl.outOfStockProducts.isEmpty &&
+                                prodCtrl.lowStockProducts.isEmpty)
+                              const Spacer(),
+                          ],
+                        ),
+                        if ((prodCtrl.outOfStockProducts.isNotEmpty ||
+                                prodCtrl.lowStockProducts.isNotEmpty) &&
+                            (prodCtrl.expiredProducts.isNotEmpty ||
+                                prodCtrl.expiringSoonProducts.isNotEmpty))
+                          const SizedBox(height: 12),
+                        // Row 2: Expired & Expiring Soon
+                        Row(
+                          children: [
+                            if (prodCtrl.expiredProducts.isNotEmpty) ...[
+                              _buildAlertCard(
+                                icon: Icons.event_busy_rounded,
+                                color: Colors.red.shade400,
+                                bgColor: Colors.red.shade400,
+                                count: prodCtrl.expiredProducts.length,
+                                label: 'Kedaluwarsa',
+                                subtitle: 'Segera hapus',
+                              ),
+                              const SizedBox(width: 12),
+                            ],
+                            if (prodCtrl.expiringSoonProducts.isNotEmpty)
+                              _buildAlertCard(
+                                icon: Icons.schedule_rounded,
+                                color: Colors.orange,
+                                bgColor: Colors.orange,
+                                count: prodCtrl.expiringSoonProducts.length,
+                                label: 'Akan Kadaluarsa',
+                                subtitle: 'Dalam 7 hari',
+                              ),
+                            if (prodCtrl.expiredProducts.isEmpty &&
+                                prodCtrl.expiringSoonProducts.isEmpty)
+                              const Spacer(),
+                          ],
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 24),
                   ],
@@ -564,7 +609,19 @@ class _DashboardViewState extends State<DashboardView> {
                     )
                   else
                     ...txCtrl.recentTransactions.take(5).map(
-                          (tx) => TransactionListItem(transaction: tx),
+                          (tx) => TransactionListItem(
+                            transaction: tx,
+                            onTap: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (_) => TransactionDetailSheet(
+                                  transaction: tx,
+                                ),
+                              );
+                            },
+                          ),
                         ),
                     ],
                   ),
@@ -851,28 +908,95 @@ class _DashboardViewState extends State<DashboardView> {
     );
   }
 
-  Widget _compactAlertRow({
+  /// Modern alert card with badge and icon
+  Widget _buildAlertCard({
     required IconData icon,
     required Color color,
-    required String text,
+    required Color bgColor,
+    required int count,
+    required String label,
+    required String subtitle,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: bgColor.withValues(alpha: 0.2),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: bgColor.withValues(alpha: 0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Icon + Badge
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: bgColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: bgColor,
+                    size: 22,
+                  ),
+                ),
+                // Count Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    count.toString(),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Label
+            Text(
+              label,
               style: TextStyle(
-                fontWeight: FontWeight.w500,
                 fontSize: 13,
+                fontWeight: FontWeight.w700,
                 color: color,
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 2),
+            // Subtitle
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: AppTheme.textSecondary,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
     );
   }
