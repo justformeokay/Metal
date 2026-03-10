@@ -8,10 +8,35 @@ import 'package:uuid/uuid.dart';
 class CartItem {
   final Product product;
   int quantity;
+  double discountPercent; // 0-100
+  double discountAmount;  // flat Rp discount per item
 
-  CartItem({required this.product, this.quantity = 1});
+  CartItem({
+    required this.product,
+    this.quantity = 1,
+    this.discountPercent = 0,
+    this.discountAmount = 0,
+  });
 
-  double get subtotal => quantity * product.sellingPrice;
+  /// Price per item after discount.
+  double get effectivePrice {
+    double price = product.sellingPrice;
+    if (discountPercent > 0) {
+      price -= price * discountPercent / 100;
+    }
+    if (discountAmount > 0) {
+      price -= discountAmount;
+    }
+    return price < 0 ? 0 : price;
+  }
+
+  /// Total discount for this line item.
+  double get totalDiscount => (product.sellingPrice - effectivePrice) * quantity;
+
+  /// Whether this item has any discount applied.
+  bool get hasDiscount => discountPercent > 0 || discountAmount > 0;
+
+  double get subtotal => quantity * effectivePrice;
   double get totalCost => quantity * product.costPrice;
 }
 
@@ -34,6 +59,9 @@ class TransactionController extends ChangeNotifier {
 
   double get cartCostTotal =>
       _cart.fold(0, (sum, item) => sum + item.totalCost);
+
+  double get cartDiscountTotal =>
+      _cart.fold(0, (sum, item) => sum + item.totalDiscount);
 
   int get cartItemCount =>
       _cart.fold(0, (sum, item) => sum + item.quantity);
@@ -64,6 +92,15 @@ class TransactionController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Update discount of a cart item.
+  void updateCartDiscount(int index, {double percent = 0, double amount = 0}) {
+    if (index >= 0 && index < _cart.length) {
+      _cart[index].discountPercent = percent;
+      _cart[index].discountAmount = amount;
+      notifyListeners();
+    }
+  }
+
   /// Remove item from cart.
   void removeFromCart(int index) {
     _cart.removeAt(index);
@@ -77,7 +114,7 @@ class TransactionController extends ChangeNotifier {
   }
 
   /// Finalize the sale — save transaction and reduce stock.
-  Future<SalesTransaction?> completeSale({String? notes}) async {
+  Future<SalesTransaction?> completeSale({String? notes, double amountPaid = 0}) async {
     if (_cart.isEmpty) return null;
 
     final items = _cart
@@ -87,6 +124,8 @@ class TransactionController extends ChangeNotifier {
               quantity: c.quantity,
               unitPrice: c.product.sellingPrice,
               costPrice: c.product.costPrice,
+              discountPercent: c.discountPercent,
+              discountAmount: c.discountAmount,
             ))
         .toList();
 
@@ -95,6 +134,8 @@ class TransactionController extends ChangeNotifier {
       items: items,
       totalAmount: cartTotal,
       totalCost: cartCostTotal,
+      totalDiscount: cartDiscountTotal,
+      amountPaid: amountPaid,
       notes: notes,
     );
 

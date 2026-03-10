@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:labaku/utils/constants.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/product_controller.dart';
 import '../../controllers/transaction_controller.dart';
+import '../../utils/currency_formatter.dart';
 import '../../utils/formatters.dart';
 import '../../utils/theme.dart';
 import '../../widgets/product_tile.dart';
@@ -180,46 +182,124 @@ class _SalesViewState extends State<SalesView> {
                   final item = txCtrl.cart[index];
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(
-                            item.product.name,
-                            style: const TextStyle(fontWeight: FontWeight.w500),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        // Quantity controls
                         Row(
-                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            _qtyButton(Icons.remove, () {
-                              txCtrl.updateCartQuantity(
-                                  index, item.quantity - 1);
-                            }),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 12),
+                            Expanded(
                               child: Text(
-                                '${item.quantity}',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w700),
+                                item.product.name,
+                                style: const TextStyle(fontWeight: FontWeight.w500),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            _qtyButton(Icons.add, () {
-                              txCtrl.updateCartQuantity(
-                                  index, item.quantity + 1);
-                            }),
+                            // Quantity controls
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _qtyButton(Icons.remove, () {
+                                  txCtrl.updateCartQuantity(
+                                      index, item.quantity - 1);
+                                }),
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 12),
+                                  child: Text(
+                                    '${item.quantity}',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w700),
+                                  ),
+                                ),
+                                _qtyButton(Icons.add, () {
+                                  txCtrl.updateCartQuantity(
+                                      index, item.quantity + 1);
+                                }),
+                              ],
+                            ),
+                            const SizedBox(width: 12),
+                            SizedBox(
+                              width: 90,
+                              child: Text(
+                                formatCurrency(item.subtotal),
+                                textAlign: TextAlign.right,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  decoration: item.hasDiscount
+                                      ? null
+                                      : null,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
-                        const SizedBox(width: 12),
-                        SizedBox(
-                          width: 90,
-                          child: Text(
-                            formatCurrency(item.subtotal),
-                            textAlign: TextAlign.right,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
+                        // Discount row
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Row(
+                            children: [
+                              InkWell(
+                                onTap: () => _showDiscountDialog(context, txCtrl, index, item),
+                                borderRadius: BorderRadius.circular(6),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: item.hasDiscount
+                                        ? AppTheme.dangerColor.withValues(alpha: 0.12)
+                                        : Colors.grey.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.discount_outlined,
+                                        size: 12,
+                                        color: item.hasDiscount
+                                            ? AppTheme.dangerColor
+                                            : Colors.grey,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        item.hasDiscount
+                                            ? (item.discountPercent > 0
+                                                ? 'Diskon ${item.discountPercent.toStringAsFixed(0)}%'
+                                                : 'Diskon ${formatCurrency(item.discountAmount)}')
+                                            : 'Diskon',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                          color: item.hasDiscount
+                                              ? AppTheme.dangerColor
+                                              : Colors.grey,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              if (item.hasDiscount) ...[
+                                const SizedBox(width: 6),
+                                Text(
+                                  formatCurrency(item.product.sellingPrice * item.quantity),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey.shade500,
+                                    decoration: TextDecoration.lineThrough,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '-${formatCurrency(item.totalDiscount)}',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.dangerColor,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                       ],
@@ -238,10 +318,32 @@ class _SalesViewState extends State<SalesView> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        '${txCtrl.cartItemCount} item',
-                        style: TextStyle(
-                            fontSize: 13, color: Colors.grey.shade600),
+                      Row(
+                        children: [
+                          Text(
+                            '${txCtrl.cartItemCount} item',
+                            style: TextStyle(
+                                fontSize: 13, color: Colors.grey.shade600),
+                          ),
+                          if (txCtrl.cartDiscountTotal > 0) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppTheme.dangerColor.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                '-${formatCurrency(txCtrl.cartDiscountTotal)}',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.dangerColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       Text(
                         formatCurrency(txCtrl.cartTotal),
@@ -332,10 +434,10 @@ class _SalesViewState extends State<SalesView> {
 
   Future<void> _checkout(BuildContext context) async {
     final txCtrl = context.read<TransactionController>();
-    final confirmed = await _showPaymentConfirmation(context, txCtrl);
-    if (!confirmed) return;
+    final amountPaid = await _showPaymentConfirmation(context, txCtrl);
+    if (amountPaid == null) return;
 
-    final tx = await txCtrl.completeSale();
+    final tx = await txCtrl.completeSale(amountPaid: amountPaid);
     if (tx != null && mounted) {
       // Refresh product stock
       context.read<ProductController>().loadProducts();
@@ -349,96 +451,381 @@ class _SalesViewState extends State<SalesView> {
     }
   }
 
-  /// Show modern payment confirmation dialog
-  Future<bool> _showPaymentConfirmation(
-      BuildContext context, TransactionController txCtrl) async {
-    return await showDialog<bool>(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) => Dialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            elevation: 0,
-            backgroundColor: Colors.transparent,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: AppTheme.border.withValues(alpha: 0.3),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
+  /// Show discount dialog for a cart item.
+  void _showDiscountDialog(
+    BuildContext context,
+    TransactionController txCtrl,
+    int index,
+    CartItem item,
+  ) {
+    // 0 = percent, 1 = nominal
+    int discountType = item.discountAmount > 0 ? 1 : 0;
+    final percentCtrl = TextEditingController(
+      text: item.discountPercent > 0 ? item.discountPercent.toStringAsFixed(0) : '',
+    );
+    final amountCtrl = TextEditingController(
+      text: item.discountAmount > 0 ? item.discountAmount.toStringAsFixed(0) : '',
+    );
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                24, 20, 24,
+                MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Handle bar
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade400,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Title
+                  Text(
+                    'Diskon: ${item.product.name}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Harga: ${formatCurrency(item.product.sellingPrice)} / ${item.product.unit}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Discount type toggle
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setModalState(() {
+                            discountType = 0;
+                            amountCtrl.clear();
+                          }),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            decoration: BoxDecoration(
+                              color: discountType == 0
+                                  ? AppTheme.primaryColor
+                                  : Colors.grey.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'Persen (%)',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: discountType == 0
+                                      ? Colors.white
+                                      : null,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setModalState(() {
+                            discountType = 1;
+                            percentCtrl.clear();
+                          }),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            decoration: BoxDecoration(
+                              color: discountType == 1
+                                  ? AppTheme.primaryColor
+                                  : Colors.grey.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'Nominal (Rp)',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: discountType == 1
+                                      ? Colors.white
+                                      : null,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Input field
+                  if (discountType == 0)
+                    TextField(
+                      controller: percentCtrl,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        labelText: 'Diskon Persen',
+                        hintText: 'Contoh: 10',
+                        suffixText: '%',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    )
+                  else
+                    TextField(
+                      controller: amountCtrl,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [CurrencyInputFormatter()],
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        labelText: 'Diskon Nominal',
+                        hintText: 'Contoh: 5.000',
+                        prefixText: 'Rp ',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 20),
+
+                  // Action buttons
+                  Row(
+                    children: [
+                      // Hapus diskon button
+                      if (item.hasDiscount)
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              txCtrl.updateCartDiscount(index, percent: 0, amount: 0);
+                              Navigator.pop(ctx);
+                            },
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              side: const BorderSide(color: AppTheme.dangerColor),
+                              foregroundColor: AppTheme.dangerColor,
+                            ),
+                            child: const Text('Hapus Diskon'),
+                          ),
+                        ),
+                      if (item.hasDiscount) const SizedBox(width: 10),
+                      // Terapkan button
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            double percent = 0;
+                            double amount = 0;
+
+                            if (discountType == 0) {
+                              percent = double.tryParse(percentCtrl.text) ?? 0;
+                              if (percent > 100) percent = 100;
+                            } else {
+                              amount = double.tryParse(
+                                    amountCtrl.text.replaceAll('.', ''),
+                                  ) ?? 0;
+                              if (amount > item.product.sellingPrice) {
+                                amount = item.product.sellingPrice;
+                              }
+                            }
+
+                            txCtrl.updateCartDiscount(
+                              index,
+                              percent: percent,
+                              amount: amount,
+                            );
+                            Navigator.pop(ctx);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text('Terapkan'),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // ─── Header Icon ───
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Icon(
-                        Icons.shopping_bag_rounded,
-                        color: AppTheme.primaryColor,
-                        size: 40,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
+            );
+          },
+        );
+      },
+    );
+  }
 
-                    // ─── Title ───
-                    const Text(
-                      'Konfirmasi Pembayaran',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Pastikan detail pesanan sudah benar',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
+  /// Show modern payment confirmation dialog
+  Future<double?> _showPaymentConfirmation(
+      BuildContext context, TransactionController txCtrl) async {
+    return await showDialog<double?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _PaymentConfirmationDialog(
+        transactionController: txCtrl,
+      ),
+    );
+  }
+}
 
-                    // ─── Order Summary ───
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.06),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color:
-                              AppTheme.primaryColor.withValues(alpha: 0.15),
-                        ),
+/// A stateful payment confirmation dialog with amount paid input.
+class _PaymentConfirmationDialog extends StatefulWidget {
+  final TransactionController transactionController;
+
+  const _PaymentConfirmationDialog({
+    required this.transactionController,
+  });
+
+  @override
+  State<_PaymentConfirmationDialog> createState() =>
+      _PaymentConfirmationDialogState();
+}
+
+class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> {
+  late TextEditingController _amountCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _amountCtrl = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    super.dispose();
+  }
+
+  double get _totalAmount => widget.transactionController.cartTotal;
+
+  double get _amountPaid {
+    if (_amountCtrl.text.isEmpty) return 0;
+    return double.tryParse(_amountCtrl.text.replaceAll('.', '')) ?? 0;
+  }
+
+  double get _change => (_amountPaid - _totalAmount).clamp(0, double.infinity);
+
+  bool get _isValid => _amountPaid >= _totalAmount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+          maxWidth: 400,
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: AppTheme.border.withValues(alpha: 0.3),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ─── Header Icon ───
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Icon(
+                      Icons.shopping_bag_rounded,
+                      color: AppTheme.primaryColor,
+                      size: 40,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ─── Title ───
+                  const Text(
+                    'Konfirmasi Pembayaran',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Masukkan jumlah uang yang diterima',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // ─── Order Summary ───
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.15),
                       ),
-                      child: Column(
-                        children: [
-                          // Item count
-                          Row(
-                            mainAxisAlignment:
-                                MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
+                    ),
+                    child: Column(
+                      children: [
+                        // Item count
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Row(
                                 children: [
                                   Icon(Icons.shopping_cart_outlined,
                                       size: 18,
                                       color: AppTheme.textSecondary),
                                   const SizedBox(width: 8),
-                                  Text(
+                                  const Text(
                                     'Jumlah Item',
                                     style: TextStyle(
                                       fontSize: 14,
@@ -447,117 +834,275 @@ class _SalesViewState extends State<SalesView> {
                                   ),
                                 ],
                               ),
+                            ),
+                            Text(
+                              '${widget.transactionController.cartItemCount} item',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        // Discount row
+                        if (widget.transactionController.cartDiscountTotal > 0) ...[
+                          const Divider(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.discount_outlined,
+                                        size: 18,
+                                        color: AppTheme.dangerColor),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Total Diskon',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: AppTheme.dangerColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                               Text(
-                                '${txCtrl.cartItemCount} item',
+                                '-${formatCurrency(widget.transactionController.cartDiscountTotal)}',
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const Divider(height: 16),
-
-                          // Total price
-                          Row(
-                            mainAxisAlignment:
-                                MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.payments_rounded,
-                                      size: 18,
-                                      color: AppTheme.primaryColor),
-                                  const SizedBox(width: 8),
-                                  const Text(
-                                    'Total Pembayaran',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppTheme.primaryColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Text(
-                                formatCurrency(txCtrl.cartTotal),
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppTheme.primaryColor,
+                                  color: AppTheme.dangerColor,
                                 ),
                               ),
                             ],
                           ),
                         ],
-                      ),
-                    ),
-                    const SizedBox(height: 28),
 
-                    // ─── Action Buttons ───
-                    Row(
-                      children: [
-                        // Cancel Button
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              side: const BorderSide(
-                                color: AppTheme.border,
-                                width: 1.5,
-                              ),
-                            ),
-                            child: const Text(
-                              'Batal',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.textSecondary,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
+                        const Divider(height: 16),
 
-                        // Confirm Button
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () => Navigator.pop(context, true),
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 12),
-                              backgroundColor:
-                                  AppTheme.primaryColor,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                        // Total price
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Icon(Icons.attach_money_rounded,
+                                      size: 18,
+                                      color: AppTheme.primaryColor),
+                                  const SizedBox(width: 8),
+                                  const Flexible(
+                                    child: Text(
+                                      'Total',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppTheme.textSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              elevation: 4,
                             ),
-                            icon: const Icon(Icons.check_circle_rounded,
-                                size: 20),
-                            label: const Text(
-                              'Bayar Sekarang',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                formatCurrency(_totalAmount),
+                                textAlign: TextAlign.right,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.textSecondary,
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // ─── Amount Paid Input ───
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.payments_rounded,
+                              size: 18,
+                              color: AppTheme.primaryColor),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Uang Diterima',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _amountCtrl,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          CurrencyInputFormatter(),
+                        ],
+                        onChanged: (_) => setState(() {}),
+                        decoration: InputDecoration(
+                          hintText: 'Contoh: 50.000',
+                          hintStyle: TextStyle(
+                            color: Colors.grey.shade400,
+                          ),
+                          filled: true,
+                          fillColor: AppTheme.primaryColor.withValues(alpha: 0.06),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: AppTheme.border.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: AppTheme.border.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: AppTheme.primaryColor,
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ─── Change Display ───
+                  if (_amountPaid > 0)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: _isValid
+                            ? Colors.green.withValues(alpha: 0.1)
+                            : Colors.red.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _isValid
+                              ? Colors.green.withValues(alpha: 0.3)
+                              : Colors.red.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _isValid ? 'Kembalian' : 'Kurang bayar',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: _isValid ? Colors.green : Colors.red,
+                            ),
+                          ),
+                          Text(
+                            _isValid
+                                ? formatCurrency(_change)
+                                : '-${formatCurrency((_totalAmount - _amountPaid).abs())}',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: _isValid ? Colors.green : Colors.red,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 28),
+
+                  // ─── Action Buttons ───
+                  Row(
+                    children: [
+                      // Cancel Button
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context, null),
+                          style: OutlinedButton.styleFrom(
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            side: const BorderSide(
+                              color: AppTheme.border,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: const Text(
+                            'Batal',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+
+                      // Confirm Button
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _isValid
+                              ? () =>
+                                  Navigator.pop(context, _amountPaid)
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 12),
+                            backgroundColor: _isValid
+                                ? AppTheme.primaryColor
+                                : Colors.grey.shade400,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 4,
+                          ),
+                          icon: const Icon(Icons.check_circle_rounded,
+                              size: 20),
+                          label: const Text(
+                            'Selesai',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
-        ) ??
-        false;
+        ),
+      ),
+    );
   }
 }

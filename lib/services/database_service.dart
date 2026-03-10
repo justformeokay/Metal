@@ -60,7 +60,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 4,
+      version: 6,
       onCreate: _createTables,
       onUpgrade: _upgradeTables,
     );
@@ -92,6 +92,8 @@ class DatabaseService {
         id TEXT PRIMARY KEY,
         totalAmount REAL NOT NULL,
         totalCost REAL NOT NULL,
+        totalDiscount REAL NOT NULL DEFAULT 0,
+        amountPaid REAL NOT NULL DEFAULT 0,
         date TEXT NOT NULL,
         notes TEXT
       )
@@ -106,6 +108,8 @@ class DatabaseService {
         quantity INTEGER NOT NULL,
         unitPrice REAL NOT NULL,
         costPrice REAL NOT NULL,
+        discountPercent REAL NOT NULL DEFAULT 0,
+        discountAmount REAL NOT NULL DEFAULT 0,
         FOREIGN KEY (transactionId) REFERENCES transactions(id)
       )
     ''');
@@ -171,6 +175,14 @@ class DatabaseService {
           createdAt TEXT NOT NULL
         )
       ''');
+    }
+    if (oldVersion < 5) {
+      await db.execute('ALTER TABLE transactions ADD COLUMN totalDiscount REAL NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE transaction_items ADD COLUMN discountPercent REAL NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE transaction_items ADD COLUMN discountAmount REAL NOT NULL DEFAULT 0');
+    }
+    if (oldVersion < 6) {
+      await db.execute('ALTER TABLE transactions ADD COLUMN amountPaid REAL NOT NULL DEFAULT 0');
     }
   }
 

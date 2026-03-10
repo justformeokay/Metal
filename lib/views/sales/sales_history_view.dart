@@ -543,11 +543,26 @@ class _SalesHistoryViewState extends State<SalesHistoryView> {
                             children: [
                               Expanded(
                                 flex: 3,
-                                child: Text(
-                                  item.productName,
-                                  style: const TextStyle(fontSize: 12),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.productName,
+                                      style: const TextStyle(fontSize: 12),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    if (item.hasDiscount)
+                                      Text(
+                                        item.discountPercent > 0
+                                            ? 'Diskon ${item.discountPercent.toStringAsFixed(0)}%'
+                                            : 'Diskon ${formatCurrency(item.discountAmount)}',
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          color: AppTheme.dangerColor,
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ),
                               SizedBox(
@@ -587,9 +602,28 @@ class _SalesHistoryViewState extends State<SalesHistoryView> {
               const SizedBox(height: 16),
 
               // Totals
+              if (tx.totalDiscount > 0) ...[
+                _detailRow(
+                  'Total Diskon',
+                  '-${formatCurrency(tx.totalDiscount)}',
+                  color: AppTheme.dangerColor,
+                ),
+                const SizedBox(height: 4),
+              ],
               _detailRow('Total Penjualan', formatCurrency(tx.totalAmount),
                   bold: true),
               const SizedBox(height: 4),
+              // Payment information
+              if (tx.amountPaid > 0) ...[
+                _detailRow('Uang Diterima', formatCurrency(tx.amountPaid)),
+                const SizedBox(height: 4),
+                _detailRow(
+                  'Kembalian',
+                  formatCurrency(tx.change),
+                  color: Colors.green,
+                ),
+                const SizedBox(height: 4),
+              ],
               _detailRow('Total Modal', formatCurrency(tx.totalCost)),
               const SizedBox(height: 4),
               _detailRow(

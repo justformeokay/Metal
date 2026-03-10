@@ -165,6 +165,31 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
                               ),
                             ],
                           ),
+                          if (item.hasDiscount)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    item.discountPercent > 0
+                                        ? '  Diskon ${item.discountPercent.toStringAsFixed(0)}%'
+                                        : '  Diskon ${formatCurrency(item.discountAmount)}/item',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.red,
+                                    ),
+                                  ),
+                                  Text(
+                                    '-${formatCurrency(item.totalDiscount)}',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.red,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                         ],
                       ),
                     )),
@@ -172,6 +197,32 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
                 const SizedBox(height: 8),
                 _dashedDivider(),
                 const SizedBox(height: 8),
+
+                // ─── Discount Total ──────────────────────
+                if (widget.transaction.totalDiscount > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Total Diskon',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.red,
+                          ),
+                        ),
+                        Text(
+                          '-${formatCurrency(widget.transaction.totalDiscount)}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.red,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
                 // ─── Total ───────────────────────────────
                 Row(
@@ -198,7 +249,55 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
 
                 const SizedBox(height: 12),
                 _dashedDivider(),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
+
+                // ─── Payment Information ─────────────────
+                if (widget.transaction.amountPaid > 0) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Uang Diterima',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
+                        ),
+                      ),
+                      Text(
+                        formatCurrency(widget.transaction.amountPaid),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Kembalian',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
+                        ),
+                      ),
+                      Text(
+                        formatCurrency(widget.transaction.change),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.green,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _dashedDivider(),
+                  const SizedBox(height: 12),
+                ],
 
                 // ─── Footer ──────────────────────────────
                 Text(
