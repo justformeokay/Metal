@@ -204,7 +204,7 @@ class _AdvancedAnalyticsViewState extends State<AdvancedAnalyticsView>
 
     return Container(
       height: 220,
-      padding: const EdgeInsets.only(right: 16, top: 16),
+      padding: const EdgeInsets.only(left: 8, right: 16, top: 16, bottom: 12),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
@@ -329,7 +329,7 @@ class _AdvancedAnalyticsViewState extends State<AdvancedAnalyticsView>
 
     return Container(
       height: 200,
-      padding: const EdgeInsets.only(right: 16, top: 16),
+      padding: const EdgeInsets.only(left: 8, right: 16, top: 16, bottom: 12),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
