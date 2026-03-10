@@ -80,6 +80,7 @@ class SalesTransaction {
   final double amountPaid;
   final DateTime date;
   final String? notes;
+  final String paymentMethod; // Cash, QRIS, Gopay, OVO, Dana, Transfer
 
   SalesTransaction({
     required this.id,
@@ -90,6 +91,7 @@ class SalesTransaction {
     this.amountPaid = 0,
     DateTime? date,
     this.notes,
+    this.paymentMethod = 'Tunai',
   }) : date = date ?? DateTime.now();
 
   /// Change from payment.
@@ -107,6 +109,7 @@ class SalesTransaction {
       'amountPaid': amountPaid,
       'date': date.toIso8601String(),
       'notes': notes ?? '',
+      'paymentMethod': paymentMethod,
     };
   }
 
@@ -123,6 +126,7 @@ class SalesTransaction {
       amountPaid: (map['amountPaid'] as num?)?.toDouble() ?? 0,
       date: DateTime.parse(map['date'] as String),
       notes: map['notes'] as String?,
+      paymentMethod: map['paymentMethod'] as String? ?? 'Tunai',
     );
   }
 }

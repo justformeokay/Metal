@@ -60,7 +60,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: _createTables,
       onUpgrade: _upgradeTables,
     );
@@ -183,6 +183,9 @@ class DatabaseService {
     }
     if (oldVersion < 6) {
       await db.execute('ALTER TABLE transactions ADD COLUMN amountPaid REAL NOT NULL DEFAULT 0');
+    }
+    if (oldVersion < 7) {
+      await db.execute('ALTER TABLE transactions ADD COLUMN paymentMethod TEXT NOT NULL DEFAULT "Tunai"');
     }
   }
 

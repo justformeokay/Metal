@@ -434,10 +434,16 @@ class _SalesViewState extends State<SalesView> {
 
   Future<void> _checkout(BuildContext context) async {
     final txCtrl = context.read<TransactionController>();
-    final amountPaid = await _showPaymentConfirmation(context, txCtrl);
-    if (amountPaid == null) return;
+    final result = await _showPaymentConfirmation(context, txCtrl);
+    if (result == null) return;
 
-    final tx = await txCtrl.completeSale(amountPaid: amountPaid);
+    final amountPaid = result['amount'] as double;
+    final paymentMethod = result['method'] as String;
+
+    final tx = await txCtrl.completeSale(
+      amountPaid: amountPaid,
+      paymentMethod: paymentMethod,
+    );
     if (tx != null && mounted) {
       // Refresh product stock
       context.read<ProductController>().loadProducts();
@@ -685,9 +691,9 @@ class _SalesViewState extends State<SalesView> {
   }
 
   /// Show modern payment confirmation dialog
-  Future<double?> _showPaymentConfirmation(
+  Future<Map<String, dynamic>?> _showPaymentConfirmation(
       BuildContext context, TransactionController txCtrl) async {
-    return await showDialog<double?>(
+    return await showDialog<Map<String, dynamic>?>(
       context: context,
       barrierDismissible: false,
       builder: (_) => _PaymentConfirmationDialog(
@@ -712,6 +718,7 @@ class _PaymentConfirmationDialog extends StatefulWidget {
 
 class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> {
   late TextEditingController _amountCtrl;
+  String _selectedPayment = 'Tunai';
 
   @override
   void initState() {
@@ -925,18 +932,18 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
                   ),
                   const SizedBox(height: 24),
 
-                  // ─── Amount Paid Input ───
+                  // ─── Payment Method selector ───
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.payments_rounded,
+                          Icon(Icons.payment_rounded,
                               size: 18,
                               color: AppTheme.primaryColor),
                           const SizedBox(width: 8),
                           const Text(
-                            'Uang Diterima',
+                            'Metode Pembayaran',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -945,93 +952,161 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _amountCtrl,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          CurrencyInputFormatter(),
-                        ],
-                        onChanged: (_) => setState(() {}),
-                        decoration: InputDecoration(
-                          hintText: 'Contoh: 50.000',
-                          hintStyle: TextStyle(
-                            color: Colors.grey.shade400,
-                          ),
-                          filled: true,
-                          fillColor: AppTheme.primaryColor.withValues(alpha: 0.06),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: AppTheme.border.withValues(alpha: 0.3),
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: AppTheme.border.withValues(alpha: 0.3),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
-                              color: AppTheme.primaryColor,
-                              width: 2,
-                            ),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          'Tunai',
+                          'QRIS',
+                          'Gopay',
+                          'OVO',
+                          'Dana',
+                          'Transfer',
+                        ]
+                            .map((method) => FilterChip(
+                                  label: Text(method),
+                                  selected: _selectedPayment == method,
+                                  onSelected: (selected) {
+                                    if (selected) {
+                                      setState(() {
+                                        _selectedPayment = method;
+                                        // For non-cash, clear amount field as it will auto-set to total
+                                        if (method != 'Tunai') {
+                                          _amountCtrl.clear();
+                                        }
+                                      });
+                                    }
+                                  },
+                                  backgroundColor: Colors.transparent,
+                                  selectedColor: AppTheme.primaryColor.withValues(alpha: 0.2),
+                                  side: BorderSide(
+                                    color: _selectedPayment == method
+                                        ? AppTheme.primaryColor
+                                        : AppTheme.border.withValues(alpha: 0.3),
+                                  ),
+                                  labelStyle: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: _selectedPayment == method
+                                        ? AppTheme.primaryColor
+                                        : AppTheme.textSecondary,
+                                  ),
+                                ))
+                            .toList(),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
 
-                  // ─── Change Display ───
-                  if (_amountPaid > 0)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: _isValid
-                            ? Colors.green.withValues(alpha: 0.1)
-                            : Colors.red.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: _isValid
-                              ? Colors.green.withValues(alpha: 0.3)
-                              : Colors.red.withValues(alpha: 0.3),
+                  // ─── Amount Paid Input (only for Tunai) ───
+                  if (_selectedPayment == 'Tunai')
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.payments_rounded,
+                                size: 18,
+                                color: AppTheme.primaryColor),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Uang Diterima',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            _isValid ? 'Kembalian' : 'Kurang bayar',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: _isValid ? Colors.green : Colors.red,
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _amountCtrl,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            CurrencyInputFormatter(),
+                          ],
+                          onChanged: (_) => setState(() {}),
+                          decoration: InputDecoration(
+                            hintText: 'Contoh: 50.000',
+                            hintStyle: TextStyle(
+                              color: Colors.grey.shade400,
+                            ),
+                            filled: true,
+                            fillColor: AppTheme.primaryColor.withValues(alpha: 0.06),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: AppTheme.border.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: AppTheme.border.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: AppTheme.primaryColor,
+                                width: 2,
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
                             ),
                           ),
-                          Text(
-                            _isValid
-                                ? formatCurrency(_change)
-                                : '-${formatCurrency((_totalAmount - _amountPaid).abs())}',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: _isValid ? Colors.green : Colors.red,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // ─── Change Display (only for Tunai) ───
+                        if (_amountPaid > 0)
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: _isValid
+                                  ? Colors.green.withValues(alpha: 0.1)
+                                  : Colors.red.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _isValid
+                                    ? Colors.green.withValues(alpha: 0.3)
+                                    : Colors.red.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  _isValid ? 'Kembalian' : 'Kurang bayar',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: _isValid ? Colors.green : Colors.red,
+                                  ),
+                                ),
+                                Text(
+                                  _isValid
+                                      ? formatCurrency(_change)
+                                      : '-${formatCurrency((_totalAmount - _amountPaid).abs())}',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: _isValid ? Colors.green : Colors.red,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
+                      ],
                     ),
                   const SizedBox(height: 28),
 
@@ -1068,14 +1143,26 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
                       // Confirm Button
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: _isValid
-                              ? () =>
-                                  Navigator.pop(context, _amountPaid)
+                          onPressed: (_selectedPayment != 'Tunai' || _isValid)
+                              ? () {
+                                  // For non-cash, auto-set amount to total
+                                  final finalAmount = _selectedPayment != 'Tunai'
+                                      ? _totalAmount
+                                      : _amountPaid;
+
+                                  Navigator.pop(
+                                    context,
+                                    {
+                                      'amount': finalAmount,
+                                      'method': _selectedPayment,
+                                    },
+                                  );
+                                }
                               : null,
                           style: ElevatedButton.styleFrom(
                             padding:
                                 const EdgeInsets.symmetric(vertical: 12),
-                            backgroundColor: _isValid
+                            backgroundColor: (_selectedPayment != 'Tunai' || _isValid)
                                 ? AppTheme.primaryColor
                                 : Colors.grey.shade400,
                             shape: RoundedRectangleBorder(

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
+import 'dart:ui' as ui;
+import 'package:flutter/rendering.dart';
 import '../../models/store_model.dart';
 import '../../models/transaction.dart';
 import '../../utils/formatters.dart';
@@ -17,8 +20,10 @@ class ReceiptPreviewView extends StatefulWidget {
 
 class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
   final StoreService _storeService = StoreService();
+  final GlobalKey _receiptKey = GlobalKey();
   StoreModel? _userStore;
   bool _isLoading = true;
+  bool _isSharing = false;
 
   @override
   void initState() {
@@ -67,17 +72,19 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
-          child: Container(
-            width: double.infinity,
-            constraints: const BoxConstraints(maxWidth: 320),
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(4),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 20,
+          child: RepaintBoundary(
+            key: _receiptKey,
+            child: Container(
+              width: double.infinity,
+              constraints: const BoxConstraints(maxWidth: 320),
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(4),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 20,
                   offset: const Offset(0, 4),
                 ),
               ],
@@ -295,6 +302,27 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
                     ],
                   ),
                   const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Metode Pembayaran',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
+                        ),
+                      ),
+                      Text(
+                        widget.transaction.paymentMethod,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   _dashedDivider(),
                   const SizedBox(height: 12),
                 ],
@@ -317,6 +345,7 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
               ],
             ),
           ),
+            ),
         ),
       ),
       bottomNavigationBar: SafeArea(
@@ -324,14 +353,24 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
+              // Expanded(
+              //   child: OutlinedButton.icon(
+              //     onPressed: () => Navigator.pop(context),
+              //     icon: const Icon(Icons.arrow_back_rounded),
+              //     label: const Text('Kembali'),
+              //   ),
+              // ),
+              const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back_rounded),
-                  label: const Text('Kembali'),
+                  onPressed: _isSharing ? null : _shareReceipt,
+                  icon: _isSharing 
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.share_rounded),
+                  label: const Text('Bagikan'),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () {
@@ -344,7 +383,7 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
                     );
                   },
                   icon: const Icon(Icons.print_rounded),
-                  label: const Text('Cetak Struk'),
+                  label: const Text('Cetak'),
                 ),
               ),
             ],
@@ -352,6 +391,46 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
         ),
       ),
     );
+  }
+
+  /// Capture receipt as image and share it
+  Future<void> _shareReceipt() async {
+    try {
+      setState(() => _isSharing = true);
+      
+      final boundary = _receiptKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Gagal mengambil gambar struk')),
+          );
+        }
+        return;
+      }
+
+      // Capture with higher pixel ratio for better quality
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      final pngBytes = byteData!.buffer.asUint8List();
+
+      // Create a temporary file name
+      final fileName = 'struk_${widget.transaction.id}.png';
+      
+      // Share the image
+      await Share.shareXFiles(
+        [XFile.fromData(pngBytes, mimeType: 'image/png', name: fileName)],
+        subject: 'Struk Pembayaran - ${widget.transaction.date.toString().split(' ')[0]}',
+        text: 'Berikut adalah struk pembayaran Anda. Terima kasih!',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    } finally {
+      setState(() => _isSharing = false);
+    }
   }
 
   Widget _dashedDivider() {

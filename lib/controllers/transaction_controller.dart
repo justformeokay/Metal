@@ -114,7 +114,11 @@ class TransactionController extends ChangeNotifier {
   }
 
   /// Finalize the sale — save transaction and reduce stock.
-  Future<SalesTransaction?> completeSale({String? notes, double amountPaid = 0}) async {
+  Future<SalesTransaction?> completeSale({
+    String? notes,
+    double amountPaid = 0,
+    String paymentMethod = 'Tunai',
+  }) async {
     if (_cart.isEmpty) return null;
 
     final items = _cart
@@ -137,6 +141,7 @@ class TransactionController extends ChangeNotifier {
       totalDiscount: cartDiscountTotal,
       amountPaid: amountPaid,
       notes: notes,
+      paymentMethod: paymentMethod,
     );
 
     await _db.insertTransaction(transaction);
