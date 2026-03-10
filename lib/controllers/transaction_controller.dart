@@ -118,6 +118,8 @@ class TransactionController extends ChangeNotifier {
     String? notes,
     double amountPaid = 0,
     String paymentMethod = 'Tunai',
+    String? transferBank,
+    String? transferAccountNumber,
   }) async {
     if (_cart.isEmpty) return null;
 
@@ -142,6 +144,8 @@ class TransactionController extends ChangeNotifier {
       amountPaid: amountPaid,
       notes: notes,
       paymentMethod: paymentMethod,
+      transferBank: transferBank,
+      transferAccountNumber: transferAccountNumber,
     );
 
     await _db.insertTransaction(transaction);

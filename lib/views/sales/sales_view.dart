@@ -4,6 +4,8 @@ import 'package:labaku/utils/constants.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/product_controller.dart';
 import '../../controllers/transaction_controller.dart';
+import '../../models/bank.dart';
+import '../../services/bank_service.dart';
 import '../../utils/currency_formatter.dart';
 import '../../utils/formatters.dart';
 import '../../utils/theme.dart';
@@ -439,10 +441,14 @@ class _SalesViewState extends State<SalesView> {
 
     final amountPaid = result['amount'] as double;
     final paymentMethod = result['method'] as String;
+    final transferBank = result['transferBank'] as String?;
+    final transferAccountNumber = result['transferAccountNumber'] as String?;
 
     final tx = await txCtrl.completeSale(
       amountPaid: amountPaid,
       paymentMethod: paymentMethod,
+      transferBank: transferBank,
+      transferAccountNumber: transferAccountNumber,
     );
     if (tx != null && mounted) {
       // Refresh product stock
@@ -718,17 +724,23 @@ class _PaymentConfirmationDialog extends StatefulWidget {
 
 class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> {
   late TextEditingController _amountCtrl;
+  late TextEditingController _accountNumberCtrl;
   String _selectedPayment = 'Tunai';
+  String? _selectedTransferBank;
+  late Future<List<Bank>> _banksFuture;
 
   @override
   void initState() {
     super.initState();
     _amountCtrl = TextEditingController();
+    _accountNumberCtrl = TextEditingController();
+    _banksFuture = BankService().getBanks();
   }
 
   @override
   void dispose() {
     _amountCtrl.dispose();
+    _accountNumberCtrl.dispose();
     super.dispose();
   }
 
@@ -752,7 +764,7 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
       child: ConstrainedBox(
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.85,
-          maxWidth: 400,
+          maxWidth: 360,
         ),
         child: Container(
           decoration: BoxDecoration(
@@ -771,7 +783,7 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
           ),
           child: SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -997,7 +1009,166 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
+
+                  // ─── Transfer Bank Selection (only for Transfer) ───
+                  if (_selectedPayment == 'Transfer')
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.account_balance_rounded,
+                                size: 18,
+                                color: AppTheme.primaryColor),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Pilih Bank',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        FutureBuilder<List<Bank>>(
+                          future: _banksFuture,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryColor.withValues(alpha: 0.06),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              );
+                            }
+                            if (snapshot.hasError) {
+                              return Text('Error: ${snapshot.error}');
+                            }
+                            final banks = snapshot.data ?? [];
+                            return DropdownButtonFormField<String>(
+                              value: _selectedTransferBank,
+                              isExpanded: true,
+                              onChanged: (value) {
+                                setState(() => _selectedTransferBank = value);
+                              },
+                              items: banks.map((bank) {
+                                return DropdownMenuItem<String>(
+                                  value: bank.kodeBank,
+                                  child: Text(
+                                    bank.namaBank,
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                );
+                              }).toList(),
+                              decoration: InputDecoration(
+                                hintText: 'Pilih bank tujuan',
+                                filled: true,
+                                isDense: true,
+                                fillColor: AppTheme.primaryColor.withValues(alpha: 0.06),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: AppTheme.border.withValues(alpha: 0.3),
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: AppTheme.border.withValues(alpha: 0.3),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: AppTheme.primaryColor,
+                                    width: 2,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 12),
+
+                        // ─── Account Number Input (for Transfer) ───
+                        Row(
+                          children: [
+                            Icon(Icons.numbers_rounded,
+                                size: 18,
+                                color: AppTheme.primaryColor),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Nomor Rekening Pengirim',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _accountNumberCtrl,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(20),
+                          ],
+                          onChanged: (_) => setState(() {}),
+                          decoration: InputDecoration(
+                            hintText: 'Contoh: 1234567890',
+                            hintStyle: TextStyle(
+                              color: Colors.grey.shade400,
+                            ),
+                            filled: true,
+                            isDense: true,
+                            fillColor: AppTheme.primaryColor.withValues(alpha: 0.06),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: AppTheme.border.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: AppTheme.border.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: AppTheme.primaryColor,
+                                width: 2,
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                          ),
+                          style: const TextStyle(
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                    ),
 
                   // ─── Amount Paid Input (only for Tunai) ───
                   if (_selectedPayment == 'Tunai')
@@ -1056,16 +1227,16 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
                               ),
                             ),
                             contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
+                              horizontal: 12,
+                              vertical: 10,
                             ),
                           ),
                           style: const TextStyle(
-                            fontSize: 16,
+                            fontSize: 15,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
 
                         // ─── Change Display (only for Tunai) ───
                         if (_amountPaid > 0)
@@ -1108,7 +1279,7 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
                           ),
                       ],
                     ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 20),
 
                   // ─── Action Buttons ───
                   Row(
@@ -1143,7 +1314,10 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
                       // Confirm Button
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: (_selectedPayment != 'Tunai' || _isValid)
+                          onPressed: (_selectedPayment != 'Tunai' || _isValid) &&
+                                  (_selectedPayment != 'Transfer' ||
+                                      (_selectedTransferBank != null &&
+                                          _accountNumberCtrl.text.isNotEmpty))
                               ? () {
                                   // For non-cash, auto-set amount to total
                                   final finalAmount = _selectedPayment != 'Tunai'
@@ -1155,6 +1329,8 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
                                     {
                                       'amount': finalAmount,
                                       'method': _selectedPayment,
+                                      'transferBank': _selectedTransferBank,
+                                      'transferAccountNumber': _accountNumberCtrl.text,
                                     },
                                   );
                                 }
@@ -1162,7 +1338,10 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
                           style: ElevatedButton.styleFrom(
                             padding:
                                 const EdgeInsets.symmetric(vertical: 12),
-                            backgroundColor: (_selectedPayment != 'Tunai' || _isValid)
+                            backgroundColor: (_selectedPayment != 'Tunai' || _isValid) &&
+                                    (_selectedPayment != 'Transfer' ||
+                                        (_selectedTransferBank != null &&
+                                            _accountNumberCtrl.text.isNotEmpty))
                                 ? AppTheme.primaryColor
                                 : Colors.grey.shade400,
                             shape: RoundedRectangleBorder(

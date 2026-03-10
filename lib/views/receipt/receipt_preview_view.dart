@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/rendering.dart';
+import '../../models/bank.dart';
 import '../../models/store_model.dart';
 import '../../models/transaction.dart';
+import '../../services/bank_service.dart';
 import '../../utils/formatters.dart';
 import '../../services/store_service.dart';
 import '../receipt/bluetooth_printer_view.dart';
@@ -22,6 +24,7 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
   final StoreService _storeService = StoreService();
   final GlobalKey _receiptKey = GlobalKey();
   StoreModel? _userStore;
+  Bank? _transferBank;
   bool _isLoading = true;
   bool _isSharing = false;
 
@@ -29,6 +32,16 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
   void initState() {
     super.initState();
     _loadUserStore();
+    _loadTransferBank();
+  }
+
+  Future<void> _loadTransferBank() async {
+    if (widget.transaction.paymentMethod == 'Transfer' &&
+        widget.transaction.transferBank != null) {
+      final bank = await BankService()
+          .getBankByCodeAsync(widget.transaction.transferBank!);
+      if (mounted) setState(() => _transferBank = bank);
+    }
   }
 
   Future<void> _loadUserStore() async {
@@ -304,6 +317,7 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
                   const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       const Text(
                         'Metode Pembayaran',
@@ -312,14 +326,7 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
                           color: Colors.black54,
                         ),
                       ),
-                      Text(
-                        widget.transaction.paymentMethod,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                      ),
+                      _buildPaymentMethodWidget(),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -431,6 +438,59 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
     } finally {
       setState(() => _isSharing = false);
     }
+  }
+
+  Widget _buildPaymentMethodWidget() {
+    if (widget.transaction.paymentMethod == 'Transfer' &&
+        widget.transaction.transferBank != null) {
+      final urlImage = _transferBank?.urlImage;
+      final bankName = _transferBank?.namaBank ?? 'Transfer';
+      final accountNumber = widget.transaction.transferAccountNumber ?? '';
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (urlImage != null)
+            Image.network(
+              urlImage,
+              height: 22,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => Text(
+                bankName,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
+                ),
+              ),
+            )
+          else
+            Text(
+              bankName,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Colors.black87,
+              ),
+            ),
+          if (accountNumber.isNotEmpty)
+            Text(
+              accountNumber,
+              style: const TextStyle(
+                fontSize: 11,
+                color: Colors.black54,
+              ),
+            ),
+        ],
+      );
+    }
+    return Text(
+      widget.transaction.paymentMethod,
+      style: const TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: Colors.black87,
+      ),
+    );
   }
 
   Widget _dashedDivider() {

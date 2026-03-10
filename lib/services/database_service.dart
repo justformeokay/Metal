@@ -60,7 +60,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 7,
+      version: 8,
       onCreate: _createTables,
       onUpgrade: _upgradeTables,
     );
@@ -95,7 +95,10 @@ class DatabaseService {
         totalDiscount REAL NOT NULL DEFAULT 0,
         amountPaid REAL NOT NULL DEFAULT 0,
         date TEXT NOT NULL,
-        notes TEXT
+        notes TEXT,
+        paymentMethod TEXT NOT NULL DEFAULT "Tunai",
+        transferBank TEXT,
+        transferAccountNumber TEXT
       )
     ''');
 
@@ -186,6 +189,10 @@ class DatabaseService {
     }
     if (oldVersion < 7) {
       await db.execute('ALTER TABLE transactions ADD COLUMN paymentMethod TEXT NOT NULL DEFAULT "Tunai"');
+    }
+    if (oldVersion < 8) {
+      await db.execute('ALTER TABLE transactions ADD COLUMN transferBank TEXT');
+      await db.execute('ALTER TABLE transactions ADD COLUMN transferAccountNumber TEXT');
     }
   }
 

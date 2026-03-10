@@ -81,6 +81,8 @@ class SalesTransaction {
   final DateTime date;
   final String? notes;
   final String paymentMethod; // Cash, QRIS, Gopay, OVO, Dana, Transfer
+  final String? transferBank; // Bank code for transfer method
+  final String? transferAccountNumber; // Account number for transfer
 
   SalesTransaction({
     required this.id,
@@ -92,6 +94,8 @@ class SalesTransaction {
     DateTime? date,
     this.notes,
     this.paymentMethod = 'Tunai',
+    this.transferBank,
+    this.transferAccountNumber,
   }) : date = date ?? DateTime.now();
 
   /// Change from payment.
@@ -110,6 +114,8 @@ class SalesTransaction {
       'date': date.toIso8601String(),
       'notes': notes ?? '',
       'paymentMethod': paymentMethod,
+      'transferBank': transferBank,
+      'transferAccountNumber': transferAccountNumber,
     };
   }
 
@@ -127,6 +133,8 @@ class SalesTransaction {
       date: DateTime.parse(map['date'] as String),
       notes: map['notes'] as String?,
       paymentMethod: map['paymentMethod'] as String? ?? 'Tunai',
+      transferBank: map['transferBank'] as String?,
+      transferAccountNumber: map['transferAccountNumber'] as String?,
     );
   }
 }

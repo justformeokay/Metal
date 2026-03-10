@@ -284,12 +284,14 @@ class TransactionDetailSheet extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          transaction.paymentMethod,
+                          _getPaymentDisplayText(transaction),
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: _getPaymentMethodColor(transaction.paymentMethod),
                           ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
@@ -376,6 +378,17 @@ class TransactionDetailSheet extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String _getPaymentDisplayText(SalesTransaction transaction) {
+    if (transaction.paymentMethod == 'Transfer') {
+      if (transaction.transferBank != null && 
+          transaction.transferAccountNumber != null) {
+        return '${transaction.transferBank}\n${transaction.transferAccountNumber}';
+      }
+      return 'Transfer';
+    }
+    return transaction.paymentMethod;
   }
 
   Color _getPaymentMethodColor(String method) {
