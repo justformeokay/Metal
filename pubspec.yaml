@@ -74,6 +74,9 @@ dependencies:
   barcode_widget: ^2.0.4
   gal: ^2.3.2
 
+  # Google Fonts
+  google_fonts: ^7.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:labaku/utils/constants.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/product_controller.dart';
 import '../../controllers/transaction_controller.dart';
@@ -49,39 +50,60 @@ class _SalesViewState extends State<SalesView> {
             ),
         ],
       ),
-      body: Column(
-        children: [
-          // ─── Search ────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    onChanged: (v) => setState(() => _search = v),
-                    decoration: const InputDecoration(
-                      hintText: 'Cari produk...',
-                      prefixIcon: Icon(Icons.search_rounded),
+      body: Center(
+        child: SizedBox(
+          width: ResponsiveHelper.getButtonWidth(context, tabletPercent: 0.5),
+          child: Column(
+            children: [
+              // ─── Search ────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        onChanged: (v) => setState(() => _search = v),
+                        decoration: InputDecoration(
+                          hintText: 'Cari produk...',
+                          hintStyle: TextStyle(color: Colors.grey.shade500),
+                          prefixIcon: Icon(Icons.search_rounded, color: Colors.grey.shade500),
+                          filled: true,
+                          fillColor: Theme.of(context).brightness == Brightness.dark
+                              ? AppTheme.cardDark
+                              : Colors.grey.shade100,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    // Barcode scan button
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: IconButton(
+                        onPressed: () => _scanBarcode(context),
+                        icon: const Icon(Icons.qr_code_scanner_rounded,
+                            color: Colors.white),
+                        tooltip: 'Scan Barcode',
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                // Barcode scan button
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: IconButton(
-                    onPressed: () => _scanBarcode(context),
-                    icon: const Icon(Icons.qr_code_scanner_rounded,
-                        color: Colors.white),
-                    tooltip: 'Scan Barcode',
-                  ),
-                ),
-              ],
-            ),
-          ),
+              ),
 
           // ─── Product grid ──────────────────────────────
           Expanded(
@@ -124,6 +146,8 @@ class _SalesViewState extends State<SalesView> {
           // ─── Cart summary ─────────────────────────────
           if (txCtrl.cart.isNotEmpty) _buildCartPanel(context, txCtrl),
         ],
+          ),
+        ),
       ),
     );
   }

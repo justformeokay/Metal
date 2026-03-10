@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
 import '../../utils/theme.dart';
+import '../../utils/constants.dart';
 import '../../widgets/auth_widgets.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -116,8 +117,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          child: AuthCard(
-            child: Form(
+          child: Center(
+            child: SizedBox(
+              width: ResponsiveHelper.getButtonWidth(context, tabletPercent: 0.5),
+              child: AuthCard(
+                child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -275,6 +279,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ],
               ),
+            ),
+          ),
             ),
           ),
         ),

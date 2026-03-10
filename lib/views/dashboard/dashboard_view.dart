@@ -9,6 +9,7 @@ import '../../services/cloud_backup_service.dart';
 import '../../services/database_service.dart';
 import '../../utils/formatters.dart';
 import '../../utils/theme.dart';
+import '../../utils/constants.dart';
 import '../../widgets/loading_indicator.dart';
 import '../../widgets/transaction_list_item.dart';
 import '../../widgets/empty_state.dart';
@@ -331,11 +332,14 @@ class _DashboardViewState extends State<DashboardView> {
               message: 'Memuat dashboard...',
               indicatorSize: 60,
             )
-          : RefreshIndicator(
-              onRefresh: _loadData,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
+          : Center(
+              child: SizedBox(
+                width: ResponsiveHelper.getButtonWidth(context, tabletPercent: 0.5),
+                child: RefreshIndicator(
+                  onRefresh: _loadData,
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
                   // ─── Top Metric Cards ──────────────────────
                   // Sales Card (Full width)
                   _buildMetricCard(
@@ -562,7 +566,9 @@ class _DashboardViewState extends State<DashboardView> {
                     ...txCtrl.recentTransactions.take(5).map(
                           (tx) => TransactionListItem(transaction: tx),
                         ),
-                ],
+                    ],
+                  ),
+                ),
               ),
             ),
     );

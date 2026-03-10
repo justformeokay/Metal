@@ -1,5 +1,34 @@
 import 'package:flutter/material.dart';
 
+/// Responsive layout helper for tablet/mobile views
+class ResponsiveHelper {
+  /// Get button width for tablet/mobile responsive design
+  /// Returns percentage width on tablet in landscape mode, full width in portrait
+  static double getButtonWidth(BuildContext context, {double tabletPercent = 0.4}) {
+    final width = MediaQuery.of(context).size.width;
+    final orientation = MediaQuery.of(context).orientation;
+    
+    // Only constrain on tablets in landscape mode
+    // In portrait, always use full width
+    if (width > 600 && orientation == Orientation.landscape) {
+      return width * tabletPercent;
+    }
+    return double.infinity;
+  }
+
+  /// Get whether device is in tablet mode (only in landscape)
+  static bool isTablet(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final orientation = MediaQuery.of(context).orientation;
+    return width > 600 && orientation == Orientation.landscape;
+  }
+
+  /// Get main axis alignment for tablet/mobile
+  static MainAxisAlignment getMainAxisAlignment(BuildContext context) {
+    return isTablet(context) ? MainAxisAlignment.center : MainAxisAlignment.start;
+  }
+}
+
 /// App-wide constants.
 class AppConstants {
   static const String appName = 'LabaKu';

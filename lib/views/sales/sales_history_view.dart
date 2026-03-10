@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/transaction.dart';
 import '../../services/database_service.dart';
+import '../../utils/constants.dart';
 import '../../utils/formatters.dart';
 import '../../utils/theme.dart';
 
@@ -65,8 +66,11 @@ class _SalesHistoryViewState extends State<SalesHistoryView> {
       appBar: AppBar(
         title: const Text('Riwayat Penjualan'),
       ),
-      body: Column(
-        children: [
+      body: Center(
+        child: SizedBox(
+          width: ResponsiveHelper.getButtonWidth(context, tabletPercent: 0.7),
+          child: Column(
+            children: [
           // ─── Filter Bar ──────────────────────────
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -186,7 +190,9 @@ class _SalesHistoryViewState extends State<SalesHistoryView> {
                         ),
                       ),
           ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }

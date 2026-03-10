@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:labaku/utils/constants.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/product_controller.dart';
 import '../../widgets/product_tile.dart';
@@ -32,19 +33,40 @@ class _ProductListViewState extends State<ProductListView> {
       appBar: AppBar(
         title: const Text('Produk & Stok'),
       ),
-      body: Column(
-        children: [
-          // ─── Search bar ────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: TextField(
-              onChanged: ctrl.setSearchQuery,
-              decoration: const InputDecoration(
-                hintText: 'Cari produk...',
-                prefixIcon: Icon(Icons.search_rounded),
+      body: Center(
+        child: SizedBox(
+          width: ResponsiveHelper.getButtonWidth(context, tabletPercent: 0.5),
+          child: Column(
+            children: [
+              // ─── Search bar ────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: TextField(
+                  onChanged: ctrl.setSearchQuery,
+                  decoration: InputDecoration(
+                    hintText: 'Cari produk...',
+                    hintStyle: TextStyle(color: Colors.grey.shade500),
+                    prefixIcon: Icon(Icons.search_rounded, color: Colors.grey.shade500),
+                    filled: true,
+                    fillColor: Theme.of(context).brightness == Brightness.dark
+                        ? AppTheme.cardDark
+                        : Colors.grey.shade100,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  ),
+                ),
               ),
-            ),
-          ),
 
           // ─── Category chips ────────────────────────────
           if (ctrl.categories.length > 1)
@@ -179,8 +201,10 @@ class _ProductListViewState extends State<ProductListView> {
                           );
                         },
                       ),
-          ),
-        ],
+            ),
+          ],
+        ),
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         heroTag: 'add_product',

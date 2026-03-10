@@ -8,6 +8,7 @@ import '../../controllers/settings_controller.dart';
 import '../../controllers/transaction_controller.dart';
 import '../../models/store_model.dart';
 import '../../utils/theme.dart';
+import '../../utils/constants.dart';
 import '../../services/backup_service.dart';
 import '../../services/cloud_backup_service.dart';
 import '../../services/store_service.dart';
@@ -71,9 +72,12 @@ class _SettingsViewState extends State<SettingsView> {
       appBar: AppBar(
         title: const Text('Pengaturan'),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
+      body: Center(
+        child: SizedBox(
+          width: ResponsiveHelper.getButtonWidth(context, tabletPercent: 0.5),
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
           // ─── Business Profile ──────────────────────
           _sectionTitle('Profil Pengguna & Bisnis'),
           const SizedBox(height: 8),
@@ -250,7 +254,9 @@ class _SettingsViewState extends State<SettingsView> {
           ),
 
           const SizedBox(height: 32),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }

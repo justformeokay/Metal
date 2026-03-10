@@ -4,6 +4,7 @@ import '../../controllers/expense_controller.dart';
 import '../../models/expense.dart';
 import '../../utils/formatters.dart';
 import '../../utils/theme.dart';
+import '../../utils/constants.dart';
 import '../../widgets/empty_state.dart';
 import 'expense_form_view.dart';
 
@@ -32,33 +33,38 @@ class _ExpenseListViewState extends State<ExpenseListView> {
       appBar: AppBar(
         title: const Text('Pengeluaran'),
       ),
-      body: ctrl.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : ctrl.expenses.isEmpty
-              ? EmptyState(
-                  icon: Icons.money_off_rounded,
-                  title: 'Belum ada pengeluaran',
-                  subtitle: 'Catat pengeluaran bisnis kamu',
-                  action: ElevatedButton.icon(
-                    onPressed: () => _openForm(context),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Tambah Pengeluaran'),
-                  ),
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: ctrl.expenses.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final expense = ctrl.expenses[index];
-                    return _ExpenseCard(
-                      expense: expense,
-                      onTap: () => _openForm(context, expense: expense),
-                      onDelete: () =>
-                          _confirmDelete(context, expense.id, expense.name),
-                    );
-                  },
-                ),
+      body: Center(
+        child: SizedBox(
+          width: ResponsiveHelper.getButtonWidth(context, tabletPercent: 0.5),
+          child: ctrl.isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : ctrl.expenses.isEmpty
+                  ? EmptyState(
+                      icon: Icons.money_off_rounded,
+                      title: 'Belum ada pengeluaran',
+                      subtitle: 'Catat pengeluaran bisnis kamu',
+                      action: ElevatedButton.icon(
+                        onPressed: () => _openForm(context),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Tambah Pengeluaran'),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: ctrl.expenses.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final expense = ctrl.expenses[index];
+                        return _ExpenseCard(
+                          expense: expense,
+                          onTap: () => _openForm(context, expense: expense),
+                          onDelete: () =>
+                              _confirmDelete(context, expense.id, expense.name),
+                        );
+                      },
+                    ),
+        ),
+      ),
       floatingActionButton: FloatingActionButton(
         heroTag: 'add_expense',
         onPressed: () => _openForm(context),

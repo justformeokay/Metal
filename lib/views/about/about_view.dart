@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../utils/theme.dart';
+import '../../utils/constants.dart';
 
 /// About page — developer info and app technologies.
 class AboutView extends StatelessWidget {
@@ -15,9 +16,12 @@ class AboutView extends StatelessWidget {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+        child: Center(
+          child: SizedBox(
+            width: ResponsiveHelper.getButtonWidth(context, tabletPercent: 0.5),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
             // ─── App Info ────────────────────────────
             Center(
               child: Column(
@@ -190,6 +194,8 @@ class AboutView extends StatelessWidget {
 
             const SizedBox(height: 24),
           ],
+            ),
+          ),
         ),
       ),
     );

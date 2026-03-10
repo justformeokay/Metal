@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
 import '../../utils/theme.dart';
+import '../../utils/constants.dart';
 import '../../widgets/auth_widgets.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
@@ -77,125 +78,128 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Logo / Branding
-                  Image.asset('assets/final.png', width: 150),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Kelola keuangan usahamu',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppTheme.textSecondary,
+              child: SizedBox(
+                width: ResponsiveHelper.getButtonWidth(context, tabletPercent: 0.5),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Logo / Branding
+                    Image.asset('assets/final.png', width: 150),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Kelola keuangan usahamu',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.textSecondary,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 36),
-      
-                  // Form card
-                  AuthCard(
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Masuk',
+                    const SizedBox(height: 36),
+        
+                    // Form card
+                    AuthCard(
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Masuk',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+        
+                            // Email
+                            CustomTextField(
+                              controller: _emailCtrl,
+                              label: 'Email',
+                              hint: 'nama@email.com',
+                              prefixIcon: Icons.email_outlined,
+                              keyboardType: TextInputType.emailAddress,
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) {
+                                  return 'Email wajib diisi';
+                                }
+                                if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v.trim())) {
+                                  return 'Format email tidak valid';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+        
+                            // Password
+                            CustomTextField(
+                              controller: _passwordCtrl,
+                              label: 'Password',
+                              prefixIcon: Icons.lock_outline,
+                              isPassword: true,
+                              validator: (v) {
+                                if (v == null || v.isEmpty) {
+                                  return 'Password wajib diisi';
+                                }
+                                if (v.length < 6) {
+                                  return 'Password minimal 6 karakter';
+                                }
+                                return null;
+                              },
+                            ),
+        
+                            // Forgot password
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: _goToForgotPassword,
+                                child: const Text(
+                                  'Lupa Password?',
+                                  style: TextStyle(fontSize: 13),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+        
+                            // Login button
+                            Consumer<AuthController>(
+                              builder: (context, auth, _) {
+                                return PrimaryButton(
+                                  text: 'Masuk',
+                                  isLoading: auth.isLoading,
+                                  onPressed: _handleLogin,
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+        
+                    const SizedBox(height: 24),
+        
+                    // Register link
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'Belum punya akun? ',
+                          style: TextStyle(color: AppTheme.textSecondary),
+                        ),
+                        GestureDetector(
+                          onTap: _goToRegister,
+                          child: const Text(
+                            'Daftar',
                             style: TextStyle(
-                              fontSize: 20,
+                              color: AppTheme.primaryColor,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const SizedBox(height: 20),
-      
-                          // Email
-                          CustomTextField(
-                            controller: _emailCtrl,
-                            label: 'Email',
-                            hint: 'nama@email.com',
-                            prefixIcon: Icons.email_outlined,
-                            keyboardType: TextInputType.emailAddress,
-                            validator: (v) {
-                              if (v == null || v.trim().isEmpty) {
-                                return 'Email wajib diisi';
-                              }
-                              if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v.trim())) {
-                                return 'Format email tidak valid';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-      
-                          // Password
-                          CustomTextField(
-                            controller: _passwordCtrl,
-                            label: 'Password',
-                            prefixIcon: Icons.lock_outline,
-                            isPassword: true,
-                            validator: (v) {
-                              if (v == null || v.isEmpty) {
-                                return 'Password wajib diisi';
-                              }
-                              if (v.length < 6) {
-                                return 'Password minimal 6 karakter';
-                              }
-                              return null;
-                            },
-                          ),
-      
-                          // Forgot password
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: _goToForgotPassword,
-                              child: const Text(
-                                'Lupa Password?',
-                                style: TextStyle(fontSize: 13),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-      
-                          // Login button
-                          Consumer<AuthController>(
-                            builder: (context, auth, _) {
-                              return PrimaryButton(
-                                text: 'Masuk',
-                                isLoading: auth.isLoading,
-                                onPressed: _handleLogin,
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-      
-                  const SizedBox(height: 24),
-      
-                  // Register link
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        'Belum punya akun? ',
-                        style: TextStyle(color: AppTheme.textSecondary),
-                      ),
-                      GestureDetector(
-                        onTap: _goToRegister,
-                        child: const Text(
-                          'Daftar',
-                          style: TextStyle(
-                            color: AppTheme.primaryColor,
-                            fontWeight: FontWeight.w600,
-                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                ],
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
               ),
             ),
           ),

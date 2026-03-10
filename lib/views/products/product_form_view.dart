@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../controllers/product_controller.dart';
 import '../../models/product.dart';
 import '../../utils/constants.dart';
+import '../../utils/currency_formatter.dart';
 import '../../utils/theme.dart';
 import '../barcode/barcode_scanner_view.dart';
 
@@ -65,11 +66,14 @@ class _ProductFormViewState extends State<ProductFormView> {
       appBar: AppBar(
         title: Text(isEditing ? 'Edit Produk' : 'Tambah Produk'),
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
+      body: Center(
+        child: SizedBox(
+          width: ResponsiveHelper.getButtonWidth(context, tabletPercent: 0.5),
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
             // Product name
             TextFormField(
               controller: _nameCtrl,
@@ -94,6 +98,7 @@ class _ProductFormViewState extends State<ProductFormView> {
                       prefixText: 'Rp ',
                     ),
                     keyboardType: TextInputType.number,
+                    inputFormatters: [CurrencyInputFormatter()],
                     validator: (v) =>
                         v == null || v.isEmpty ? 'Wajib diisi' : null,
                   ),
@@ -107,6 +112,7 @@ class _ProductFormViewState extends State<ProductFormView> {
                       prefixText: 'Rp ',
                     ),
                     keyboardType: TextInputType.number,
+                    inputFormatters: [CurrencyInputFormatter()],
                     validator: (v) =>
                         v == null || v.isEmpty ? 'Wajib diisi' : null,
                   ),
@@ -214,7 +220,9 @@ class _ProductFormViewState extends State<ProductFormView> {
                 child: Text(isEditing ? 'Simpan Perubahan' : 'Tambah Produk'),
               ),
             ),
-          ],
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -369,8 +377,8 @@ class _ProductFormViewState extends State<ProductFormView> {
     if (isEditing) {
       final updated = widget.product!.copyWith(
         name: _nameCtrl.text.trim(),
-        costPrice: double.tryParse(_costCtrl.text) ?? 0,
-        sellingPrice: double.tryParse(_priceCtrl.text) ?? 0,
+        costPrice: double.tryParse(_costCtrl.text.replaceAll('.', '')) ?? 0,
+        sellingPrice: double.tryParse(_priceCtrl.text.replaceAll('.', '')) ?? 0,
         stockQuantity: int.tryParse(_stockCtrl.text) ?? 0,
         minStock: int.tryParse(_minStockCtrl.text) ?? 5,
         expiryDate: _expiryDate,
@@ -383,8 +391,8 @@ class _ProductFormViewState extends State<ProductFormView> {
     } else {
       await ctrl.addProduct(
         name: _nameCtrl.text.trim(),
-        costPrice: double.tryParse(_costCtrl.text) ?? 0,
-        sellingPrice: double.tryParse(_priceCtrl.text) ?? 0,
+        costPrice: double.tryParse(_costCtrl.text.replaceAll('.', '')) ?? 0,
+        sellingPrice: double.tryParse(_priceCtrl.text.replaceAll('.', '')) ?? 0,
         stockQuantity: int.tryParse(_stockCtrl.text) ?? 0,
         minStock: int.tryParse(_minStockCtrl.text) ?? 5,
         expiryDate: _expiryDate,

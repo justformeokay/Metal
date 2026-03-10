@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/theme.dart';
+import '../../utils/constants.dart';
 
 /// Onboarding screen — shown only on first app launch.
 class OnboardingView extends StatefulWidget {
@@ -87,6 +88,7 @@ class _OnboardingViewState extends State<OnboardingView> {
 
                     // Buttons
                     Row(
+                      mainAxisAlignment: ResponsiveHelper.getMainAxisAlignment(context),
                       children: [
                         // Skip button
                         if (_currentPage < 2)
@@ -110,35 +112,41 @@ class _OnboardingViewState extends State<OnboardingView> {
                         if (_currentPage < 2) const SizedBox(width: 12),
 
                         // Next / Selesai button
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              if (_currentPage < 2) {
+                        if (_currentPage < 2)
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () {
                                 _pageController.nextPage(
                                   duration: const Duration(milliseconds: 300),
                                   curve: Curves.easeInOut,
                                 );
-                              } else {
-                                _completeOnboarding();
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.primaryColor,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryColor,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
+                              child: const Text('Lanjut'),
                             ),
-                            child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 200),
-                              child: Text(
-                                _currentPage < 2 ? 'Lanjut' : 'Selesai',
-                                key: ValueKey(_currentPage < 2 ? 'lanjut' : 'selesai'),
+                          )
+                        else
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: _completeOnboarding,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryColor,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
+                              child: const Text('Selesai'),
                             ),
                           ),
-                        ),
                       ],
                     ),
                   ],

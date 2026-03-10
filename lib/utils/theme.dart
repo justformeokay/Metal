@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// App theme — modern, clean flat design with soft shadows.
 class AppTheme {
@@ -36,7 +37,10 @@ class AppTheme {
       surface: surfaceLight,
     ),
     scaffoldBackgroundColor: surfaceLight,
-    fontFamily: 'Roboto',
+    fontFamily: GoogleFonts.poppins().fontFamily,
+    textTheme: GoogleFonts.poppinsTextTheme(
+      ThemeData.light().textTheme,
+    ),
     appBarTheme: const AppBarTheme(
       backgroundColor: Colors.white,
       foregroundColor: textPrimary,
@@ -138,7 +142,10 @@ class AppTheme {
       surface: surfaceDark,
     ),
     scaffoldBackgroundColor: surfaceDark,
-    fontFamily: 'Roboto',
+    fontFamily: GoogleFonts.poppins().fontFamily,
+    textTheme: GoogleFonts.poppinsTextTheme(
+      ThemeData.dark().textTheme,
+    ),
     appBarTheme: const AppBarTheme(
       backgroundColor: cardDark,
       foregroundColor: textPrimaryDark,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/constants.dart';
 import 'dashboard/dashboard_view.dart';
 import 'products/product_list_view.dart';
 import 'products/stock_alerts_view.dart';
@@ -77,9 +78,12 @@ class _MoreMenuView extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Lainnya'),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
+      body: Center(
+        child: SizedBox(
+          width: ResponsiveHelper.getButtonWidth(context, tabletPercent: 0.5),
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
           _menuTile(
             context,
             icon: Icons.account_balance_wallet_rounded,
@@ -137,6 +141,8 @@ class _MoreMenuView extends StatelessWidget {
             page: const SettingsView(),
           ),
         ],
+          ),
+        ),
       ),
     );
   }

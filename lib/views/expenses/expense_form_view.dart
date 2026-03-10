@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/expense_controller.dart';
 import '../../models/expense.dart';
+import '../../utils/constants.dart';
+import '../../utils/currency_formatter.dart';
 
 /// Add / Edit expense form.
 class ExpenseFormView extends StatefulWidget {
@@ -48,85 +50,95 @@ class _ExpenseFormViewState extends State<ExpenseFormView> {
       appBar: AppBar(
         title: Text(isEditing ? 'Edit Pengeluaran' : 'Tambah Pengeluaran'),
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            TextFormField(
-              controller: _nameCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Nama Pengeluaran',
-                hintText: 'Contoh: Beli bahan baku',
-              ),
-              validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
-              textCapitalization: TextCapitalization.sentences,
-            ),
-            const SizedBox(height: 16),
+      body: Center(
+        child: SizedBox(
+          width: ResponsiveHelper.getButtonWidth(context, tabletPercent: 0.5),
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                TextFormField(
+                  controller: _nameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Nama Pengeluaran',
+                    hintText: 'Contoh: Beli bahan baku',
+                  ),
+                  validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
+                  textCapitalization: TextCapitalization.sentences,
+                ),
+                const SizedBox(height: 16),
 
-            DropdownButtonFormField<String>(
-              initialValue: _category,
-              decoration: const InputDecoration(labelText: 'Kategori'),
-              items: ExpenseCategories.all
-                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                  .toList(),
-              onChanged: (v) =>
-                  setState(() => _category = v ?? ExpenseCategories.all.first),
-            ),
-            const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  initialValue: _category,
+                  decoration: const InputDecoration(labelText: 'Kategori'),
+                  items: ExpenseCategories.all
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                      .toList(),
+                  onChanged: (v) =>
+                      setState(() => _category = v ?? ExpenseCategories.all.first),
+                ),
+                const SizedBox(height: 16),
 
-            TextFormField(
-              controller: _amountCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Jumlah',
-                prefixText: 'Rp ',
-              ),
-              keyboardType: TextInputType.number,
-              validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
-            ),
-            const SizedBox(height: 16),
+                TextFormField(
+                  controller: _amountCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Jumlah',
+                    prefixText: 'Rp ',
+                  ),
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [CurrencyInputFormatter()],
+                  validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
+                ),
+                const SizedBox(height: 16),
 
-            // Date picker
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.calendar_today_rounded),
-              title: const Text('Tanggal'),
-              subtitle: Text(
-                '${_date.day}/${_date.month}/${_date.year}',
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: _date,
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime.now().add(const Duration(days: 1)),
-                );
-                if (picked != null) setState(() => _date = picked);
-              },
-            ),
-            const SizedBox(height: 16),
+                // Date picker
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _date,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime.now().add(const Duration(days: 1)),
+                    );
+                    if (picked != null) setState(() => _date = picked);
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: 'Tanggal',
+                      suffixIcon: const Icon(Icons.calendar_today_rounded, size: 20),
+                    ),
+                    child: Text(
+                      '${_date.day}/${_date.month}/${_date.year}',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
 
-            TextFormField(
-              controller: _notesCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Catatan (opsional)',
-                hintText: 'Catatan tambahan...',
-              ),
-              maxLines: 3,
-              textCapitalization: TextCapitalization.sentences,
-            ),
-            const SizedBox(height: 32),
+                TextFormField(
+                  controller: _notesCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Catatan (opsional)',
+                    hintText: 'Catatan tambahan...',
+                  ),
+                  maxLines: 3,
+                  textCapitalization: TextCapitalization.sentences,
+                ),
+                const SizedBox(height: 32),
 
-            SizedBox(
-              height: 52,
-              child: ElevatedButton(
-                onPressed: _save,
-                child: Text(
-                    isEditing ? 'Simpan Perubahan' : 'Tambah Pengeluaran'),
-              ),
+                SizedBox(
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: _save,
+                    child: Text(
+                        isEditing ? 'Simpan Perubahan' : 'Tambah Pengeluaran'),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -141,7 +153,7 @@ class _ExpenseFormViewState extends State<ExpenseFormView> {
       final updated = widget.expense!.copyWith(
         name: _nameCtrl.text.trim(),
         category: _category,
-        amount: double.tryParse(_amountCtrl.text) ?? 0,
+        amount: double.tryParse(_amountCtrl.text.replaceAll('.', '')) ?? 0,
         date: _date,
         notes: _notesCtrl.text.trim(),
       );
@@ -150,7 +162,7 @@ class _ExpenseFormViewState extends State<ExpenseFormView> {
       await ctrl.addExpense(
         name: _nameCtrl.text.trim(),
         category: _category,
-        amount: double.tryParse(_amountCtrl.text) ?? 0,
+        amount: double.tryParse(_amountCtrl.text.replaceAll('.', '')) ?? 0,
         date: _date,
         notes: _notesCtrl.text.trim(),
       );

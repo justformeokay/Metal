@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../models/calc_history.dart';
 import '../../services/database_service.dart';
+import '../../utils/constants.dart';
 import '../../utils/formatters.dart';
 
 /// Finance calculator with multiple modes: kembalian, diskon, margin, pajak, markup.
@@ -249,22 +250,34 @@ class _FinanceCalculatorViewState extends State<FinanceCalculatorView>
   Widget _buildCalculator(ThemeData theme, bool isDark) {
     return SingleChildScrollView(
       key: const ValueKey('calc'),
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Mode selector chips
-          _buildModeSelector(theme, isDark),
-          const SizedBox(height: 20),
-          // Input fields
-          _buildInputCard(theme, isDark),
-          const SizedBox(height: 16),
-          // Calculate button
-          _buildCalcButton(theme),
-          const SizedBox(height: 16),
-          // Result
-          if (_resultText != null) _buildResultCard(theme, isDark),
-        ],
+      child: Center(
+        child: SizedBox(
+          width: ResponsiveHelper.getButtonWidth(context, tabletPercent: 0.6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Mode selector chips
+                    _buildModeSelector(theme, isDark),
+                    const SizedBox(height: 20),
+                    // Input fields
+                    _buildInputCard(theme, isDark),
+                    const SizedBox(height: 16),
+                    // Calculate button
+                    _buildCalcButton(theme),
+                    const SizedBox(height: 16),
+                    // Result
+                    if (_resultText != null) _buildResultCard(theme, isDark),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -559,66 +572,74 @@ class _FinanceCalculatorViewState extends State<FinanceCalculatorView>
 
   Widget _buildHistory(ThemeData theme, bool isDark) {
     if (_history.isEmpty) {
-      return Center(
+      return SizedBox(
         key: const ValueKey('history'),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.history_rounded,
-                size: 64, color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.3)),
-            const SizedBox(height: 12),
-            Text(
-              'Belum ada riwayat',
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.textTheme.bodySmall?.color,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      key: const ValueKey('history'),
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
-          child: Row(
+        width: double.infinity,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
+              Icon(Icons.history_rounded,
+                  size: 64, color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.3)),
+              const SizedBox(height: 12),
               Text(
-                'Riwayat Perhitungan',
-                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: () async {
-                  await _db.clearCalcHistory();
-                  _loadHistory();
-                },
-                icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                label: const Text('Hapus Semua'),
-                style: TextButton.styleFrom(foregroundColor: const Color(0xFFEF4444)),
+                'Belum ada riwayat',
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: theme.textTheme.bodySmall?.color,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 4),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-            itemCount: _history.length,
-            itemBuilder: (context, i) {
-              final h = _history[i];
-              final mode = _modes.firstWhere(
-                (m) => m.label == h.type,
-                orElse: () => _modes[0],
-              );
-              return _HistoryTile(entry: h, mode: mode, isDark: isDark);
-            },
-          ),
+      );
+    }
+
+    return Center(
+      child: SizedBox(
+        width: ResponsiveHelper.getButtonWidth(context, tabletPercent: 0.6),
+        child: Column(
+          key: const ValueKey('history'),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+              child: Row(
+                children: [
+                  Text(
+                    'Riwayat Perhitungan',
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const Spacer(),
+                  TextButton.icon(
+                    onPressed: () async {
+                      await _db.clearCalcHistory();
+                      _loadHistory();
+                    },
+                    icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                    label: const Text('Hapus Semua'),
+                    style: TextButton.styleFrom(foregroundColor: const Color(0xFFEF4444)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                itemCount: _history.length,
+                itemBuilder: (context, i) {
+                  final h = _history[i];
+                  final mode = _modes.firstWhere(
+                    (m) => m.label == h.type,
+                    orElse: () => _modes[0],
+                  );
+                  return _HistoryTile(entry: h, mode: mode, isDark: isDark);
+                },
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
