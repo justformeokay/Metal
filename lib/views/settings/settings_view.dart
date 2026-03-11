@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/expense_controller.dart';
 import '../../controllers/product_controller.dart';
@@ -24,7 +28,9 @@ class SettingsView extends StatefulWidget {
 
 class _SettingsViewState extends State<SettingsView> {
   final StoreService _storeService = StoreService();
+  final ImagePicker _imagePicker = ImagePicker();
   StoreModel? _userStore;
+  String? _logoPath;
   bool _isLoading = true;
   bool _isCloudSyncing = false;
   bool _autoBackupEnabled = true;
@@ -36,6 +42,7 @@ class _SettingsViewState extends State<SettingsView> {
     super.initState();
     _loadUserStore();
     _loadCloudBackupState();
+    _loadLogoPath();
   }
 
   Future<void> _loadCloudBackupState() async {
@@ -60,6 +67,54 @@ class _SettingsViewState extends State<SettingsView> {
       });
     } else if (mounted) {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadLogoPath() async {
+    final prefs = await SharedPreferences.getInstance();
+    final path = prefs.getString('store_logo_path');
+    if (mounted) {
+      setState(() => _logoPath = path);
+    }
+  }
+
+  Future<void> _pickLogoImage() async {
+    final pickedFile = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 500,
+      maxHeight: 500,
+      imageQuality: 85,
+    );
+
+    if (pickedFile != null) {
+      await _saveLogoImage(File(pickedFile.path));
+    }
+  }
+
+  Future<void> _saveLogoImage(File imageFile) async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final logoDir = Directory('${dir.path}/labaku/logo');
+      if (!await logoDir.exists()) {
+        await logoDir.create(recursive: true);
+      }
+
+      final logoPath = '${logoDir.path}/store_logo.png';
+      await imageFile.copy(logoPath);
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('store_logo_path', logoPath);
+
+      if (mounted) {
+        setState(() => _logoPath = logoPath);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Logo berhasil disimpan')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal menyimpan logo: $e')),
+      );
     }
   }
 
@@ -122,6 +177,28 @@ class _SettingsViewState extends State<SettingsView> {
                         : _userStore!.phone!)),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: _isLoading ? null : () => _editProfile(context),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.description_rounded),
+                title: const Text('Deskripsi Bisnis'),
+                subtitle: Text(_isLoading
+                    ? 'Memuat...'
+                    : (_userStore?.description?.isEmpty ?? true
+                        ? 'Belum diisi'
+                        : _userStore!.description!)),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: _isLoading ? null : () => _editProfile(context),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.image_rounded),
+                title: const Text('Logo Usaha'),
+                subtitle: _logoPath != null && File(_logoPath!).existsSync()
+                    ? const Text('Logo tersimpan')
+                    : const Text('Belum ada logo'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: _isLoading ? null : _pickLogoImage,
               ),
             ],
           ),
@@ -291,6 +368,8 @@ class _SettingsViewState extends State<SettingsView> {
     final addressCtrl =
         TextEditingController(text: _userStore?.address ?? '');
     final phoneCtrl = TextEditingController(text: _userStore?.phone ?? '');
+    final descriptionCtrl =
+        TextEditingController(text: _userStore?.description ?? '');
 
     showDialog(
       context: context,
@@ -315,6 +394,16 @@ class _SettingsViewState extends State<SettingsView> {
                 decoration: const InputDecoration(labelText: 'Telepon'),
                 keyboardType: TextInputType.phone,
               ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: descriptionCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Deskripsi Bisnis',
+                  hintText: 'Contoh: Toko pakaian berkualitas tinggi',
+                ),
+                maxLines: 2,
+                maxLength: 200,
+              ),
             ],
           ),
         ),
@@ -331,6 +420,7 @@ class _SettingsViewState extends State<SettingsView> {
                   storeName: nameCtrl.text.trim(),
                   phone: phoneCtrl.text.trim(),
                   address: addressCtrl.text.trim(),
+                  description: descriptionCtrl.text.trim(),
                 );
 
                 if (mounted) {

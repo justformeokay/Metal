@@ -32,6 +32,7 @@ class StoreController
      *   - store_name: string (required)
      *   - phone: string (optional)
      *   - address: string (optional)
+     *   - description: string (optional)
      */
     public function create(): void
     {
@@ -47,6 +48,7 @@ class StoreController
         $this->storeModel->store_name = trim($data['store_name']);
         $this->storeModel->phone = $data['phone'] ?? null;
         $this->storeModel->address = $data['address'] ?? null;
+        $this->storeModel->description = $data['description'] ?? null;
 
         if ($this->storeModel->create()) {
             // Return the created store
@@ -80,6 +82,7 @@ class StoreController
      *   - store_name: string (required)
      *   - phone: string (optional)
      *   - address: string (optional)
+     *   - description: string (optional)
      */
     public function update(): void
     {
@@ -104,6 +107,7 @@ class StoreController
         $this->storeModel->store_name = trim($data['store_name']);
         $this->storeModel->phone = $data['phone'] ?? null;
         $this->storeModel->address = $data['address'] ?? null;
+        $this->storeModel->description = $data['description'] ?? null;
 
         if ($this->storeModel->update()) {
             $store = $this->storeModel->findById($this->storeModel->id);

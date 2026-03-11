@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:ui' as ui;
+import 'dart:io';
 import 'package:flutter/rendering.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/bank.dart';
 import '../../models/store_model.dart';
 import '../../models/transaction.dart';
@@ -25,6 +27,7 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
   final GlobalKey _receiptKey = GlobalKey();
   StoreModel? _userStore;
   Bank? _transferBank;
+  String? _logoPath;
   bool _isLoading = true;
   bool _isSharing = false;
 
@@ -33,6 +36,15 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
     super.initState();
     _loadUserStore();
     _loadTransferBank();
+    _loadLogoPath();
+  }
+
+  Future<void> _loadLogoPath() async {
+    final prefs = await SharedPreferences.getInstance();
+    final path = prefs.getString('store_logo_path');
+    if (mounted) {
+      setState(() => _logoPath = path);
+    }
   }
 
   Future<void> _loadTransferBank() async {
@@ -61,7 +73,7 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
     final storeName = _isLoading ? 'Memuat...' : (_userStore?.storeName ?? 'LabaKu');
     final storeAddress = _isLoading ? '' : (_userStore?.address ?? '');
     final storePhone = _isLoading ? '' : (_userStore?.phone ?? '');
-    final storeTagline = _userStore?.storeName != null ? 'Terima kasih atas kunjungan Anda!' : null;
+    final storeDescription = _isLoading ? '' : (_userStore?.description ?? '');
 
     return Scaffold(
       appBar: AppBar(
@@ -106,6 +118,17 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // ─── Header ──────────────────────────────
+                if (_logoPath != null && File(_logoPath!).existsSync())
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: SizedBox(
+                      width: 160,
+                      child: Image.file(
+                        File(_logoPath!),
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
                 Text(
                   storeName,
                   style: const TextStyle(
@@ -126,6 +149,19 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
                     storePhone,
                     style: const TextStyle(fontSize: 11, color: Colors.black54),
                     textAlign: TextAlign.center,
+                  ),
+                if (storeDescription.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      storeDescription,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontStyle: FontStyle.italic,
+                        color: Colors.black54,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
 
                 const SizedBox(height: 12),
@@ -335,9 +371,9 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
                 ],
 
                 // ─── Footer ──────────────────────────────
-                Text(
-                  storeTagline ?? 'Terima kasih atas kunjungan Anda!',
-                  style: const TextStyle(
+                const Text(
+                  'Terima kasih atas kunjungan Anda!',
+                  style: TextStyle(
                     fontSize: 12,
                     fontStyle: FontStyle.italic,
                     color: Colors.black54,

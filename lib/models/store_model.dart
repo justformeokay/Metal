@@ -5,6 +5,7 @@ class StoreModel {
   final String storeName;
   final String? phone;
   final String? address;
+  final String? description;
   final String? createdAt;
 
   StoreModel({
@@ -13,6 +14,7 @@ class StoreModel {
     required this.storeName,
     this.phone,
     this.address,
+    this.description,
     this.createdAt,
   });
 
@@ -25,6 +27,7 @@ class StoreModel {
       storeName: json['store_name'] as String,
       phone: json['phone'] as String?,
       address: json['address'] as String?,
+      description: json['description'] as String?,
       createdAt: json['created_at'] as String?,
     );
   }
@@ -36,6 +39,7 @@ class StoreModel {
       'store_name': storeName,
       'phone': phone,
       'address': address,
+      'description': description,
       'created_at': createdAt,
     };
   }
