@@ -5,6 +5,7 @@ import '../../services/database_service.dart';
 import '../../utils/constants.dart';
 import '../../utils/formatters.dart';
 import '../../utils/theme.dart';
+import '../receipt/receipt_preview_view.dart';
 
 /// Sales history page — view all transactions grouped by date with filters.
 class SalesHistoryView extends StatefulWidget {
@@ -635,6 +636,23 @@ class _SalesHistoryViewState extends State<SalesHistoryView> {
 
               const SizedBox(height: 16),
 
+              // Payment method
+              _buildPaymentMethodDisplay(tx),
+
+              const SizedBox(height: 16),
+
+              // Struk preview button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _previewStruk(tx),
+                  icon: const Icon(Icons.receipt_long_rounded),
+                  label: const Text('Lihat Struk'),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
               // Transaction ID
               Text(
                 'ID: ${tx.id}',
@@ -651,6 +669,48 @@ class _SalesHistoryViewState extends State<SalesHistoryView> {
   }
 
   // ─── Helpers ─────────────────────────────────────
+
+  Widget _buildPaymentMethodDisplay(SalesTransaction tx) {
+    String paymentText = tx.paymentMethod;
+    
+    // For transfer method, add bank and account number
+    if (tx.paymentMethod == 'Transfer' && tx.transferBank != null) {
+      paymentText = '${tx.paymentMethod} • ${tx.transferBank}';
+      if (tx.transferAccountNumber != null) {
+        paymentText += '\n${tx.transferAccountNumber}';
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Metode Pembayaran',
+          style: TextStyle(
+            fontSize: 13,
+            color: AppTheme.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          paymentText,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _previewStruk(SalesTransaction tx) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ReceiptPreviewView(transaction: tx),
+      ),
+    );
+  }
 
   Widget _detailRow(String label, String value,
       {bool bold = false, Color? color}) {
