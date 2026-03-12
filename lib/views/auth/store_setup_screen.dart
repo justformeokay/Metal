@@ -195,7 +195,7 @@ class _StoreSetupScreenState extends State<StoreSetupScreen> {
         crossAxisCount: 2,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
-        childAspectRatio: 1.4,
+        childAspectRatio: 1.2,
       ),
       itemCount: _businessTypes.length,
       itemBuilder: (context, index) {
