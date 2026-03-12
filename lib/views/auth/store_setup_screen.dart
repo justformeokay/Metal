@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../../controllers/auth_controller.dart';
 import '../../services/store_service.dart';
 import '../../utils/theme.dart';
@@ -18,10 +20,13 @@ class _StoreSetupScreenState extends State<StoreSetupScreen> {
   final _storeNameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
+  final _descriptionCtrl = TextEditingController();
 
   final StoreService _storeService = StoreService();
   bool _isLoading = false;
   int _currentStep = 0;
+  File? _logoFile;
+  String? _logoUrl;
 
   // Business type selection
   final List<_BusinessType> _businessTypes = [
@@ -39,6 +44,7 @@ class _StoreSetupScreenState extends State<StoreSetupScreen> {
     _storeNameCtrl.dispose();
     _phoneCtrl.dispose();
     _addressCtrl.dispose();
+    _descriptionCtrl.dispose();
     super.dispose();
   }
 
@@ -52,11 +58,39 @@ class _StoreSetupScreenState extends State<StoreSetupScreen> {
         ? _businessTypes[_selectedType!].label
         : null;
 
+    // Upload logo if selected
+    String? logoUrl;
+    if (_logoFile != null) {
+      final uploadResult = await _storeService.uploadStoreLogo(
+        logoFile: _logoFile!,
+        storeName: _storeNameCtrl.text.trim(),
+      );
+      if (uploadResult.success) {
+        logoUrl = uploadResult.url;
+      } else {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal upload logo: ${uploadResult.message}'),
+            backgroundColor: AppTheme.dangerColor,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+        return;
+      }
+    }
+
+    // Create store
     final result = await _storeService.createStore(
       storeName: _storeNameCtrl.text.trim(),
       businessType: businessType,
+      logoUrl: logoUrl,
       phone: _phoneCtrl.text.trim(),
       address: _addressCtrl.text.trim(),
+      description: _descriptionCtrl.text.trim(),
     );
 
     if (!mounted) return;
@@ -370,6 +404,142 @@ class _StoreSetupScreenState extends State<StoreSetupScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 16),
+
+            // Description
+            TextFormField(
+              controller: _descriptionCtrl,
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: 'Deskripsi Usaha (Opsional)',
+                hintText: 'Jelaskan tentang usaha Anda...',
+                prefixIcon: const Padding(
+                  padding: EdgeInsets.only(bottom: 48),
+                  child: Icon(Icons.description_rounded, size: 20),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Logo Upload Section
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceLight,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppTheme.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Logo Toko (Opsional)',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  // Logo Preview or Upload Button
+                  if (_logoFile == null)
+                    GestureDetector(
+                      onTap: _pickLogoImage,
+                      child: Container(
+                        width: double.infinity,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: AppTheme.border,
+                            strokeAlign: BorderSide.strokeAlignCenter,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.cloud_upload_outlined,
+                              size: 36,
+                              color: AppTheme.primaryColor,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Upload Logo',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.primaryColor,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'PNG, JPG, max 5MB',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    Stack(
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            image: DecorationImage(
+                              image: FileImage(_logoFile!),
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: GestureDetector(
+                            onTap: () => setState(() => _logoFile = null),
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.close,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  if (_logoFile != null) ...[
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: _pickLogoImage,
+                        icon: const Icon(Icons.edit, size: 16),
+                        label: const Text('Ganti'),
+                      ),
+                    ),
+                  ]
+                ],
+              ),
+            ),
             const SizedBox(height: 24),
 
             // Info box
@@ -405,6 +575,35 @@ class _StoreSetupScreenState extends State<StoreSetupScreen> {
   // ═══════════════════════════════════════════════════════════════════
   //  Helpers
   // ═══════════════════════════════════════════════════════════════════
+
+  Future<void> _pickLogoImage() async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _logoFile = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Gagal memilih gambar'),
+          backgroundColor: AppTheme.dangerColor,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
+  }
 
   Widget _stepDot(int step) {
     final isActive = _currentStep >= step;

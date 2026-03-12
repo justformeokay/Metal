@@ -31,6 +31,7 @@ class StoreController
      * Request body:
      *   - store_name: string (required)
      *   - business_type: string (optional)
+     *   - logo_url: string (optional, URL from upload endpoint)
      *   - phone: string (optional)
      *   - address: string (optional)
      *   - description: string (optional)
@@ -48,6 +49,7 @@ class StoreController
         $this->storeModel->user_id = $auth['user_id'];
         $this->storeModel->store_name = trim($data['store_name']);
         $this->storeModel->business_type = $data['business_type'] ?? null;
+        $this->storeModel->logo_url = $data['logo_url'] ?? null;
         $this->storeModel->phone = $data['phone'] ?? null;
         $this->storeModel->address = $data['address'] ?? null;
         $this->storeModel->description = $data['description'] ?? null;

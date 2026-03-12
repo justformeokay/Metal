@@ -34,6 +34,7 @@ require_once __DIR__ . '/../controllers/ReportController.php';
 require_once __DIR__ . '/../controllers/DashboardController.php';
 require_once __DIR__ . '/../controllers/BackupController.php';
 require_once __DIR__ . '/../controllers/MemberController.php';
+require_once __DIR__ . '/../controllers/UploadController.php';
 require_once __DIR__ . '/../utils/Response.php';
 
 // ============================================================
@@ -118,6 +119,9 @@ $routes = [
     ['GET',    '/api/member/list',        'MemberController',      'list'],
     ['PUT',    '/api/member/update',      'MemberController',      'update'],
     ['DELETE', '/api/member/delete',      'MemberController',      'delete'],
+
+    // ---- Upload (Protected) ----
+    ['POST',   '/api/upload/store-logo',  'UploadController',      'uploadStoreLogo'],
 ];
 
 // ============================================================
