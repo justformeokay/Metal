@@ -3,7 +3,6 @@ import 'package:share_plus/share_plus.dart';
 import 'dart:ui' as ui;
 import 'dart:io';
 import 'package:flutter/rendering.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/bank.dart';
 import '../../models/member.dart';
 import '../../models/store_model.dart';
@@ -39,7 +38,6 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
     super.initState();
     _loadUserStore();
     _loadTransferBank();
-    _loadLogoPath();
     _loadMember();
   }
 
@@ -50,11 +48,17 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
     }
   }
 
-  Future<void> _loadLogoPath() async {
-    final prefs = await SharedPreferences.getInstance();
-    final path = prefs.getString('store_logo_path');
-    if (mounted) {
-      setState(() => _logoPath = path);
+  Future<void> _loadUserStore() async {
+    final result = await _storeService.getMyStores();
+    if (result.stores.isNotEmpty && mounted) {
+      setState(() {
+        _userStore = result.stores.first;
+        // Prioritize server logo URL, otherwise load from local prefs
+        _logoPath = _userStore?.logoUrl;
+        _isLoading = false;
+      });
+    } else if (mounted) {
+      setState(() => _isLoading = false);
     }
   }
 
@@ -64,18 +68,6 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
       final bank = await BankService()
           .getBankByCodeAsync(widget.transaction.transferBank!);
       if (mounted) setState(() => _transferBank = bank);
-    }
-  }
-
-  Future<void> _loadUserStore() async {
-    final result = await _storeService.getMyStores();
-    if (result.stores.isNotEmpty && mounted) {
-      setState(() {
-        _userStore = result.stores.first;
-        _isLoading = false;
-      });
-    } else if (mounted) {
-      setState(() => _isLoading = false);
     }
   }
 
@@ -129,15 +121,23 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // ─── Header ──────────────────────────────
-                if (_logoPath != null && File(_logoPath!).existsSync())
+                if (_logoPath != null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: SizedBox(
                       width: 160,
-                      child: Image.file(
-                        File(_logoPath!),
-                        fit: BoxFit.contain,
-                      ),
+                      child: _logoPath!.startsWith('http')
+                          ? Image.network(
+                              _logoPath!,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                            )
+                          : File(_logoPath!).existsSync()
+                              ? Image.file(
+                                  File(_logoPath!),
+                                  fit: BoxFit.contain,
+                                )
+                              : const SizedBox.shrink(),
                     ),
                   ),
                 Text(
