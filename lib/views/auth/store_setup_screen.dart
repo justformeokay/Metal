@@ -47,8 +47,14 @@ class _StoreSetupScreenState extends State<StoreSetupScreen> {
 
     setState(() => _isLoading = true);
 
+    // Get the business type label from selected index
+    final businessType = _selectedType != null
+        ? _businessTypes[_selectedType!].label
+        : null;
+
     final result = await _storeService.createStore(
       storeName: _storeNameCtrl.text.trim(),
+      businessType: businessType,
       phone: _phoneCtrl.text.trim(),
       address: _addressCtrl.text.trim(),
     );

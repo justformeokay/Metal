@@ -8,6 +8,7 @@ class StoreService {
   /// Create a new store for the authenticated user.
   Future<({bool success, String message, StoreModel? store})> createStore({
     required String storeName,
+    String? businessType,
     String? phone,
     String? address,
   }) async {
@@ -16,6 +17,8 @@ class StoreService {
         '/store/create',
         body: {
           'store_name': storeName,
+          if (businessType != null && businessType.isNotEmpty)
+            'business_type': businessType,
           if (phone != null && phone.isNotEmpty) 'phone': phone,
           if (address != null && address.isNotEmpty) 'address': address,
         },

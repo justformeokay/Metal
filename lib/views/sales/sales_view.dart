@@ -114,12 +114,27 @@ class _SalesViewState extends State<SalesView> {
           // ─── Product grid ──────────────────────────────
           Expanded(
             child: filteredProducts.isEmpty
-                ? Center(
-                    child: Text(
-                      'Tidak ada produk ditemukan',
-                      style: TextStyle(color: Colors.grey.shade500),
+                ? Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 50.0),
+                  child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.inventory_2_outlined,
+                            size: 64,
+                            color: Colors.grey.shade400,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Tidak ada produk ditemukan.\nTambahkan produk baru untuk memulai penjualan pada Tab Produk.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.grey.shade500),
+                          ),
+                        ],
+                      ),
                     ),
-                  )
+                )
                 : ListView.separated(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     itemCount: filteredProducts.length,
