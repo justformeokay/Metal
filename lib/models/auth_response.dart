@@ -7,6 +7,10 @@ class AuthResponse {
   final String? token;
   final UserModel? user;
   final int? userId;
+  /// Reset token returned after OTP is verified successfully.
+  final String? resetToken;
+  /// Email echoed back from the verify-otp endpoint.
+  final String? email;
 
   AuthResponse({
     required this.success,
@@ -14,6 +18,8 @@ class AuthResponse {
     this.token,
     this.user,
     this.userId,
+    this.resetToken,
+    this.email,
   });
 
   /// Parse login response.
@@ -55,6 +61,27 @@ class AuthResponse {
   /// Parse forgot password response.
   /// { "success": true, "message": "..." }
   factory AuthResponse.fromForgotJson(Map<String, dynamic> json) {
+    return AuthResponse(
+      success: json['success'] as bool? ?? false,
+      message: json['message'] as String? ?? '',
+    );
+  }
+
+  /// Parse verify-otp response — returns reset_token + email on success.
+  /// { "success": true, "data": { "reset_token": "...", "email": "..." } }
+  factory AuthResponse.fromVerifyOtpJson(Map<String, dynamic> json) {
+    final data = json['data'] as Map<String, dynamic>?;
+    return AuthResponse(
+      success: json['success'] as bool? ?? false,
+      message: json['message'] as String? ?? '',
+      resetToken: data?['reset_token'] as String?,
+      email: data?['email'] as String?,
+    );
+  }
+
+  /// Parse reset-password response — just success + message.
+  /// { "success": true, "message": "..." }
+  factory AuthResponse.fromResetPasswordJson(Map<String, dynamic> json) {
     return AuthResponse(
       success: json['success'] as bool? ?? false,
       message: json['message'] as String? ?? '',

@@ -11,6 +11,7 @@ import 'profit_loss/profit_loss_view.dart';
 import 'analytics/advanced_analytics_view.dart';
 import 'reports/reports_view.dart';
 import 'calculator/finance_calculator_view.dart';
+import 'members/members_view.dart';
 
 /// Main shell with bottom navigation.
 class HomeShell extends StatefulWidget {
@@ -123,6 +124,14 @@ class _MoreMenuView extends StatelessWidget {
             title: 'Laporan',
             subtitle: 'Laporan penjualan & pengeluaran',
             page: const ReportsView(),
+          ),
+          _menuTile(
+            context,
+            icon: Icons.card_membership_rounded,
+            color: Colors.indigo,
+            title: 'Member',
+            subtitle: 'Kelola member & diskon pelanggan',
+            page: const MembersView(),
           ),
           _menuTile(
             context,

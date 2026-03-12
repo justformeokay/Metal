@@ -5,9 +5,11 @@ import 'dart:io';
 import 'package:flutter/rendering.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/bank.dart';
+import '../../models/member.dart';
 import '../../models/store_model.dart';
 import '../../models/transaction.dart';
 import '../../services/bank_service.dart';
+import '../../services/database_service.dart';
 import '../../utils/formatters.dart';
 import '../../services/store_service.dart';
 import '../receipt/bluetooth_printer_view.dart';
@@ -28,6 +30,7 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
   StoreModel? _userStore;
   Bank? _transferBank;
   String? _logoPath;
+  Member? _member;
   bool _isLoading = true;
   bool _isSharing = false;
 
@@ -37,6 +40,14 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
     _loadUserStore();
     _loadTransferBank();
     _loadLogoPath();
+    _loadMember();
+  }
+
+  Future<void> _loadMember() async {
+    if (widget.transaction.memberId != null) {
+      final member = await DatabaseService().getMemberById(widget.transaction.memberId!);
+      if (mounted) setState(() => _member = member);
+    }
   }
 
   Future<void> _loadLogoPath() async {
@@ -274,6 +285,32 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                             color: Colors.red,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // ─── Member Discount ─────────────────────
+                if (widget.transaction.memberDiscountApplied > 0 && _member != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Diskon Member (${_member!.name})',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Colors.green,
+                          ),
+                        ),
+                        Text(
+                          '-${formatCurrency(widget.transaction.memberDiscountApplied)}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.green,
                           ),
                         ),
                       ],

@@ -5,6 +5,7 @@ import '../models/transaction.dart';
 import '../models/expense.dart';
 import '../models/business_profile.dart';
 import '../models/calc_history.dart';
+import '../models/member.dart';
 
 /// SQLite database service — single source of truth for all local data.
 ///
@@ -60,7 +61,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 8,
+      version: 9,
       onCreate: _createTables,
       onUpgrade: _upgradeTables,
     );
@@ -98,7 +99,9 @@ class DatabaseService {
         notes TEXT,
         paymentMethod TEXT NOT NULL DEFAULT "Tunai",
         transferBank TEXT,
-        transferAccountNumber TEXT
+        transferAccountNumber TEXT,
+        memberId TEXT,
+        memberDiscountApplied REAL NOT NULL DEFAULT 0
       )
     ''');
 
@@ -148,6 +151,18 @@ class DatabaseService {
       )
     ''');
 
+    await db.execute('''
+      CREATE TABLE members (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        email TEXT,
+        discountPercent REAL NOT NULL DEFAULT 0,
+        memberSince TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'active'
+      )
+    ''');
+
     // Insert default profile
     await db.insert('business_profile', {
       'id': 1,
@@ -193,6 +208,21 @@ class DatabaseService {
     if (oldVersion < 8) {
       await db.execute('ALTER TABLE transactions ADD COLUMN transferBank TEXT');
       await db.execute('ALTER TABLE transactions ADD COLUMN transferAccountNumber TEXT');
+    }
+    if (oldVersion < 9) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS members (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          phone TEXT NOT NULL,
+          email TEXT,
+          discountPercent REAL NOT NULL DEFAULT 0,
+          memberSince TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'active'
+        )
+      ''');
+      await db.execute('ALTER TABLE transactions ADD COLUMN memberId TEXT');
+      await db.execute('ALTER TABLE transactions ADD COLUMN memberDiscountApplied REAL NOT NULL DEFAULT 0');
     }
   }
 
@@ -266,6 +296,67 @@ class DatabaseService {
         whereArgs: [cutoff],
         orderBy: 'expiryDate ASC');
     return maps.map((m) => Product.fromMap(m)).toList();
+  }
+
+  // ─── Members ────────────────────────────────────────────────
+
+  Future<List<Member>> getMembers() async {
+    final db = await database;
+    final maps = await db.query('members', orderBy: 'name ASC');
+    return maps.map((m) => Member.fromMap(m)).toList();
+  }
+
+  Future<List<Member>> searchMembers(String query) async {
+    final db = await database;
+    final maps = await db.query(
+      'members',
+      where: "(name LIKE ? OR phone LIKE ?) AND status = 'active'",
+      whereArgs: ['%$query%', '%$query%'],
+      orderBy: 'name ASC',
+    );
+    return maps.map((m) => Member.fromMap(m)).toList();
+  }
+
+  Future<Member?> getMemberById(String id) async {
+    final db = await database;
+    final maps = await db.query('members', where: 'id = ?', whereArgs: [id]);
+    if (maps.isEmpty) return null;
+    return Member.fromMap(maps.first);
+  }
+
+  Future<void> insertMember(Member member) async {
+    final db = await database;
+    await db.insert('members', member.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> updateMember(Member member) async {
+    final db = await database;
+    await db.update('members', member.toMap(),
+        where: 'id = ?', whereArgs: [member.id]);
+  }
+
+  Future<void> deleteMember(String id) async {
+    final db = await database;
+    await db.delete('members', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<int> getMemberTransactionCount(String memberId) async {
+    final db = await database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM transactions WHERE memberId = ?',
+      [memberId],
+    );
+    return (result.first['count'] as num?)?.toInt() ?? 0;
+  }
+
+  Future<double> getMemberTotalSpent(String memberId) async {
+    final db = await database;
+    final result = await db.rawQuery(
+      'SELECT COALESCE(SUM(totalAmount), 0) as total FROM transactions WHERE memberId = ?',
+      [memberId],
+    );
+    return (result.first['total'] as num?)?.toDouble() ?? 0;
   }
 
   // ─── Transactions ──────────────────────────────────────────

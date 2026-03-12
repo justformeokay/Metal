@@ -63,7 +63,7 @@ class AuthService {
   // ─── FORGOT PASSWORD ───────────────────────────────────────────────
 
   /// POST /api/forgot-password
-  /// Request a password reset token.
+  /// Sends a 6-digit OTP to the given email address.
   Future<AuthResponse> forgotPassword(String email) async {
     try {
       final json = await ApiService.post(
@@ -72,6 +72,67 @@ class AuthService {
         withAuth: false,
       );
       return AuthResponse.fromForgotJson(json);
+    } on http.ClientException {
+      return AuthResponse(
+        success: false,
+        message: 'Tidak dapat terhubung ke server',
+      );
+    } catch (e) {
+      return AuthResponse(
+        success: false,
+        message: 'Terjadi kesalahan: ${e.toString()}',
+      );
+    }
+  }
+
+  // ─── VERIFY OTP ────────────────────────────────────────────────────
+
+  /// POST /api/verify-otp
+  /// Verifies the 6-digit OTP. On success returns a [resetToken] that
+  /// must be passed to [resetPassword].
+  Future<AuthResponse> verifyOtp(String email, String otpCode) async {
+    try {
+      final json = await ApiService.post(
+        '/verify-otp',
+        body: {'email': email, 'otp_code': otpCode},
+        withAuth: false,
+      );
+      return AuthResponse.fromVerifyOtpJson(json);
+    } on http.ClientException {
+      return AuthResponse(
+        success: false,
+        message: 'Tidak dapat terhubung ke server',
+      );
+    } catch (e) {
+      return AuthResponse(
+        success: false,
+        message: 'Terjadi kesalahan: ${e.toString()}',
+      );
+    }
+  }
+
+  // ─── RESET PASSWORD ────────────────────────────────────────────────
+
+  /// POST /api/reset-password
+  /// Resets the password using the [resetToken] obtained from [verifyOtp].
+  Future<AuthResponse> resetPassword({
+    required String email,
+    required String resetToken,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    try {
+      final json = await ApiService.post(
+        '/reset-password',
+        body: {
+          'email': email,
+          'reset_token': resetToken,
+          'new_password': newPassword,
+          'password_confirmation': confirmPassword,
+        },
+        withAuth: false,
+      );
+      return AuthResponse.fromResetPasswordJson(json);
     } on http.ClientException {
       return AuthResponse(
         success: false,

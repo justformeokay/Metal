@@ -5,7 +5,9 @@ import 'package:provider/provider.dart';
 import '../../controllers/product_controller.dart';
 import '../../controllers/transaction_controller.dart';
 import '../../models/bank.dart';
+import '../../models/member.dart';
 import '../../services/bank_service.dart';
+import '../../services/database_service.dart';
 import '../../utils/currency_formatter.dart';
 import '../../utils/formatters.dart';
 import '../../utils/theme.dart';
@@ -443,12 +445,16 @@ class _SalesViewState extends State<SalesView> {
     final paymentMethod = result['method'] as String;
     final transferBank = result['transferBank'] as String?;
     final transferAccountNumber = result['transferAccountNumber'] as String?;
+    final memberId = result['memberId'] as String?;
+    final memberDiscountApplied = result['memberDiscountApplied'] as double? ?? 0;
 
     final tx = await txCtrl.completeSale(
       amountPaid: amountPaid,
       paymentMethod: paymentMethod,
       transferBank: transferBank,
       transferAccountNumber: transferAccountNumber,
+      memberId: memberId,
+      memberDiscountApplied: memberDiscountApplied,
     );
     if (tx != null && mounted) {
       // Refresh product stock
@@ -728,6 +734,11 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
   String _selectedPayment = 'Tunai';
   String? _selectedTransferBank;
   late Future<List<Bank>> _banksFuture;
+  Member? _selectedMember;
+  List<Member> _memberSearchResults = [];
+  bool _isSearchingMember = false;
+  final TextEditingController _memberSearchCtrl = TextEditingController();
+  final DatabaseService _db = DatabaseService();
 
   @override
   void initState() {
@@ -741,19 +752,41 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
   void dispose() {
     _amountCtrl.dispose();
     _accountNumberCtrl.dispose();
+    _memberSearchCtrl.dispose();
     super.dispose();
   }
 
   double get _totalAmount => widget.transactionController.cartTotal;
+
+  double get _memberDiscountAmount =>
+      _selectedMember != null ? _totalAmount * (_selectedMember!.discountPercent / 100) : 0;
+
+  double get _finalTotal => _totalAmount - _memberDiscountAmount;
 
   double get _amountPaid {
     if (_amountCtrl.text.isEmpty) return 0;
     return double.tryParse(_amountCtrl.text.replaceAll('.', '')) ?? 0;
   }
 
-  double get _change => (_amountPaid - _totalAmount).clamp(0, double.infinity);
+  double get _change => (_amountPaid - _finalTotal).clamp(0, double.infinity);
 
-  bool get _isValid => _amountPaid >= _totalAmount;
+  bool get _isValid => _amountPaid >= _finalTotal;
+
+  Future<void> _searchMembers(String query) async {
+    if (query.length < 2) {
+      setState(() {
+        _memberSearchResults = [];
+        _isSearchingMember = false;
+      });
+      return;
+    }
+    setState(() => _isSearchingMember = true);
+    final results = await _db.searchMembers(query);
+    setState(() {
+      _memberSearchResults = results;
+      _isSearchingMember = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -914,7 +947,7 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
                                   const SizedBox(width: 8),
                                   const Flexible(
                                     child: Text(
-                                      'Total',
+                                      'Subtotal',
                                       style: TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w600,
@@ -939,9 +972,254 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
                             ),
                           ],
                         ),
+
+                        // Member discount row
+                        if (_selectedMember != null && _memberDiscountAmount > 0) ...[
+                          const Divider(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.card_membership_rounded,
+                                        size: 18,
+                                        color: AppTheme.accentColor),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
+                                        'Diskon Member (${_selectedMember!.discountPercent.toStringAsFixed(0)}%)',
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          color: AppTheme.accentColor,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                '-${formatCurrency(_memberDiscountAmount)}',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.accentColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Divider(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Total Bayar',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              Text(
+                                formatCurrency(_finalTotal),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.primaryColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
+                  const SizedBox(height: 24),
+
+                  // ─── Member Search ───
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.card_membership_rounded,
+                              size: 18,
+                              color: AppTheme.primaryColor),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Member (Opsional)',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      if (_selectedMember != null)
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppTheme.accentColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppTheme.accentColor.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 18,
+                                backgroundColor: AppTheme.accentColor,
+                                child: Text(
+                                  _selectedMember!.name[0].toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _selectedMember!.name,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Diskon ${_selectedMember!.discountPercent.toStringAsFixed(0)}%',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppTheme.accentColor,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              InkWell(
+                                onTap: () => setState(() {
+                                  _selectedMember = null;
+                                  _memberSearchCtrl.clear();
+                                  _memberSearchResults = [];
+                                }),
+                                child: const Icon(Icons.close_rounded,
+                                    size: 20, color: AppTheme.textSecondary),
+                              ),
+                            ],
+                          ),
+                        )
+                      else ...[
+                        TextField(
+                          controller: _memberSearchCtrl,
+                          decoration: InputDecoration(
+                            hintText: 'Cari nama atau telepon member...',
+                            hintStyle: TextStyle(
+                              color: Colors.grey.shade400,
+                              fontSize: 14,
+                            ),
+                            prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                            suffixIcon: _isSearchingMember
+                                ? const Padding(
+                                    padding: EdgeInsets.all(12),
+                                    child: SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    ),
+                                  )
+                                : null,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: AppTheme.border),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: AppTheme.border),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: AppTheme.primaryColor,
+                                width: 1.5,
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 10),
+                            isDense: true,
+                          ),
+                          onChanged: _searchMembers,
+                        ),
+                        if (_memberSearchResults.isNotEmpty)
+                          Container(
+                            margin: const EdgeInsets.only(top: 4),
+                            constraints: const BoxConstraints(maxHeight: 150),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppTheme.border),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: ListView.separated(
+                              shrinkWrap: true,
+                              padding: EdgeInsets.zero,
+                              itemCount: _memberSearchResults.length,
+                              separatorBuilder: (_, __) =>
+                                  const Divider(height: 1),
+                              itemBuilder: (context, index) {
+                                final member = _memberSearchResults[index];
+                                return ListTile(
+                                  dense: true,
+                                  visualDensity: VisualDensity.compact,
+                                  leading: CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: AppTheme.primaryColor,
+                                    child: Text(
+                                      member.name[0].toUpperCase(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                  title: Text(
+                                    member.name,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    '${member.phone} • Diskon ${member.discountPercent.toStringAsFixed(0)}%',
+                                    style: const TextStyle(fontSize: 11),
+                                  ),
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedMember = member;
+                                      _memberSearchCtrl.clear();
+                                      _memberSearchResults = [];
+                                    });
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                      ],
+                    ],
+                  ),
+
                   const SizedBox(height: 24),
 
                   // ─── Payment Method selector ───
@@ -1267,7 +1545,7 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
                                 Text(
                                   _isValid
                                       ? formatCurrency(_change)
-                                      : '-${formatCurrency((_totalAmount - _amountPaid).abs())}',
+                                      : '-${formatCurrency((_finalTotal - _amountPaid).abs())}',
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,
@@ -1321,7 +1599,7 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
                               ? () {
                                   // For non-cash, auto-set amount to total
                                   final finalAmount = _selectedPayment != 'Tunai'
-                                      ? _totalAmount
+                                      ? _finalTotal
                                       : _amountPaid;
 
                                   Navigator.pop(
@@ -1331,6 +1609,8 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
                                       'method': _selectedPayment,
                                       'transferBank': _selectedTransferBank,
                                       'transferAccountNumber': _accountNumberCtrl.text,
+                                      'memberId': _selectedMember?.id,
+                                      'memberDiscountApplied': _memberDiscountAmount,
                                     },
                                   );
                                 }
