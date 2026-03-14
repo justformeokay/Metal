@@ -80,22 +80,45 @@ class _SettingsViewState extends State<SettingsView> {
     if (pickedFile != null && _userStore != null) {
       setState(() => _isUploadingLogo = true);
       
+      // Step 1: Upload logo file to get URL
       final result = await _storeService.uploadStoreLogo(
         logoFile: File(pickedFile.path),
         storeName: _userStore!.storeName,
       );
 
       if (mounted) {
-        setState(() => _isUploadingLogo = false);
-        
         if (result.success && result.url != null) {
-          setState(() {
-            _logoPath = result.url;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Logo berhasil diupload ke server')),
+          // Step 2: Update store record in database with new logo URL
+          final updateResult = await _storeService.updateStore(
+            storeId: _userStore!.id,
+            storeName: _userStore!.storeName,
+            phone: _userStore!.phone,
+            address: _userStore!.address,
+            description: _userStore!.description,
+            logoUrl: result.url,
           );
+
+          setState(() => _isUploadingLogo = false);
+
+          if (updateResult.success && updateResult.store != null) {
+            setState(() {
+              _userStore = updateResult.store;
+              _logoPath = updateResult.store!.logoUrl;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Logo berhasil disimpan')),
+            );
+          } else {
+            // Upload succeeded but update failed — still show the logo locally
+            setState(() {
+              _logoPath = result.url;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Logo diupload tapi gagal menyimpan. TRY REFRESH')),
+            );
+          }
         } else {
+          setState(() => _isUploadingLogo = false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Gagal upload logo: ${result.message}')),
           );

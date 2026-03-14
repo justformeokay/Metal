@@ -87,6 +87,7 @@ class StoreController
      *   - phone: string (optional)
      *   - address: string (optional)
      *   - description: string (optional)
+     *   - logo_url: string (optional)
      */
     public function update(): void
     {
@@ -112,6 +113,7 @@ class StoreController
         $this->storeModel->phone = $data['phone'] ?? null;
         $this->storeModel->address = $data['address'] ?? null;
         $this->storeModel->description = $data['description'] ?? null;
+        $this->storeModel->logo_url = $data['logo_url'] ?? null;
 
         if ($this->storeModel->update()) {
             $store = $this->storeModel->findById($this->storeModel->id);

@@ -177,6 +177,7 @@ class StoreService {
     String? phone,
     String? address,
     String? description,
+    String? logoUrl,
   }) async {
     try {
       final json = await ApiService.put(
@@ -187,6 +188,7 @@ class StoreService {
           if (phone != null) 'phone': phone,
           if (address != null) 'address': address,
           if (description != null) 'description': description,
+          if (logoUrl != null) 'logo_url': logoUrl,
         },
       );
 
