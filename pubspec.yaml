@@ -49,8 +49,9 @@ dependencies:
   pdf: ^3.11.2
   printing: ^5.14.2
 
-  # Bluetooth thermal printer
-  # esc_pos_utils and esc_pos_bluetooth: Use platform-specific Bluetooth packages
+  # Bluetooth thermal printer (Classic SPP)
+  print_bluetooth_thermal: ^1.1.1
+  esc_pos_utils_plus: ^2.0.4
 
   # Date formatting
   intl: ^0.20.2

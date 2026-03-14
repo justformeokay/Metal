@@ -7,6 +7,7 @@ import 'sales/sales_view.dart';
 import 'sales/sales_history_view.dart';
 import 'expenses/expense_list_view.dart';
 import 'settings/settings_view.dart';
+import 'printer/printer_settings_view.dart';
 import 'profit_loss/profit_loss_view.dart';
 import 'analytics/advanced_analytics_view.dart';
 import 'reports/reports_view.dart';
@@ -140,6 +141,14 @@ class _MoreMenuView extends StatelessWidget {
             title: 'Kalkulator Keuangan',
             subtitle: 'Kembalian, diskon, margin & pajak',
             page: const FinanceCalculatorView(),
+          ),
+          _menuTile(
+            context,
+            icon: Icons.print_rounded,
+            color: Colors.cyan,
+            title: 'Pengaturan Printer',
+            subtitle: 'Kertas, margin, koneksi printer',
+            page: const PrinterSettingsView(),
           ),
           _menuTile(
             context,
