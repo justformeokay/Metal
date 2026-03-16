@@ -693,21 +693,28 @@ class _DashboardViewState extends State<DashboardView> {
     String? subtitle,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? const Color(0xFF0F1117) : Colors.white;
+    final titleColor = isDark ? Colors.white54 : Colors.grey.shade500;
+    final valueColor = isDark ? Colors.white : const Color(0xFF1A1F2E);
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0F1117) : const Color(0xFF1A1F2E),
+        color: cardBg,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: const Color(0xFFF59E0B).withValues(alpha: 0.22),
+          color: isDark
+              ? const Color(0xFFF59E0B).withValues(alpha: 0.22)
+              : const Color(0xFFF59E0B).withValues(alpha: 0.35),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFF59E0B).withValues(alpha: 0.10),
-            blurRadius: 40,
+            color: isDark
+                ? const Color(0xFFF59E0B).withValues(alpha: 0.10)
+                : Colors.black.withValues(alpha: 0.07),
+            blurRadius: 24,
             spreadRadius: 0,
-            offset: const Offset(0, 8),
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -730,10 +737,10 @@ class _DashboardViewState extends State<DashboardView> {
                     const SizedBox(width: 7),
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white54,
+                        color: titleColor,
                         letterSpacing: 0.3,
                       ),
                     ),
@@ -745,10 +752,10 @@ class _DashboardViewState extends State<DashboardView> {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     value,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.w900,
-                      color: Colors.white,
+                      color: valueColor,
                       letterSpacing: -1,
                     ),
                   ),
@@ -803,7 +810,7 @@ class _DashboardViewState extends State<DashboardView> {
     bool isProfit = false,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardBg = isDark ? const Color(0xFF0F1117) : const Color(0xFF1A1F2E);
+    final cardBg = isDark ? const Color(0xFF0F1117) : Colors.white;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -899,9 +906,9 @@ class _DashboardViewState extends State<DashboardView> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 18),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF0F1117) : const Color(0xFF1A1F2E),
+            color: isDark ? const Color(0xFF0F1117) : Colors.white,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: color.withValues(alpha: 0.18), width: 1),
+            border: Border.all(color: color.withValues(alpha: 0.25), width: 1),
             boxShadow: [
               BoxShadow(
                 color: color.withValues(alpha: 0.07),
@@ -926,10 +933,10 @@ class _DashboardViewState extends State<DashboardView> {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: isDark ? Colors.white : const Color(0xFF1A1F2E),
                     letterSpacing: -0.2,
                   ),
                   maxLines: 1,
@@ -964,9 +971,20 @@ class _DashboardViewState extends State<DashboardView> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0F1117) : const Color(0xFF1A1F2E),
+        color: isDark ? const Color(0xFF0F1117) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: iconColor.withValues(alpha: 0.15)),
+        border: Border.all(
+          color: isDark
+              ? iconColor.withValues(alpha: 0.15)
+              : iconColor.withValues(alpha: 0.2),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.0 : 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -997,10 +1015,10 @@ class _DashboardViewState extends State<DashboardView> {
                 const SizedBox(height: 3),
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    color: isDark ? Colors.white : const Color(0xFF1A1F2E),
                     letterSpacing: -0.3,
                   ),
                   maxLines: 1,
@@ -1046,7 +1064,7 @@ class _DashboardViewState extends State<DashboardView> {
     return Expanded(
       child: Container(
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF0F1117) : const Color(0xFF1A1F2E),
+          color: isDark ? const Color(0xFF0F1117) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: bgColor.withValues(alpha: 0.2)),
           boxShadow: [
