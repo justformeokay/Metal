@@ -8,7 +8,7 @@ class SettingsController extends ChangeNotifier {
   final DatabaseService _db = DatabaseService();
 
   BusinessProfile _profile = BusinessProfile();
-  ThemeMode _themeMode = ThemeMode.light;
+  ThemeMode _themeMode = ThemeMode.dark;
 
   static const String _themeModeKey = 'theme_mode';
 
@@ -31,7 +31,7 @@ class SettingsController extends ChangeNotifier {
     } else if (saved == 'system') {
       _themeMode = ThemeMode.system;
     } else {
-      _themeMode = ThemeMode.light;
+      _themeMode = ThemeMode.dark;
     }
   }
 
