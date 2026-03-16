@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:labaku/utils/constants.dart';
@@ -6,6 +8,7 @@ import '../../controllers/product_controller.dart';
 import '../../controllers/transaction_controller.dart';
 import '../../models/bank.dart';
 import '../../models/member.dart';
+import '../../models/product.dart';
 import '../../services/bank_service.dart';
 import '../../services/database_service.dart';
 import '../../utils/currency_formatter.dart';
@@ -25,6 +28,7 @@ class SalesView extends StatefulWidget {
 
 class _SalesViewState extends State<SalesView> {
   String _search = '';
+  bool _isGridView = false;
 
   @override
   void initState() {
@@ -94,6 +98,43 @@ class _SalesViewState extends State<SalesView> {
                       ),
                     ),
                     const SizedBox(width: 8),
+                    // View toggle button (List/Grid)
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey.shade800
+                            : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            onPressed: () => setState(() => _isGridView = false),
+                            icon: Icon(
+                              Icons.list_rounded,
+                              color: !_isGridView ? AppTheme.primaryColor : Colors.grey.shade500,
+                            ),
+                            tooltip: 'List View',
+                            iconSize: 20,
+                          ),
+                          Container(
+                            width: 1,
+                            height: 24,
+                            color: Colors.grey.shade400,
+                          ),
+                          IconButton(
+                            onPressed: () => setState(() => _isGridView = true),
+                            icon: Icon(
+                              Icons.grid_3x3_rounded,
+                              color: _isGridView ? AppTheme.primaryColor : Colors.grey.shade500,
+                            ),
+                            tooltip: 'Grid View',
+                            iconSize: 20,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     // Barcode scan button
                     Container(
                       decoration: BoxDecoration(
@@ -111,7 +152,7 @@ class _SalesViewState extends State<SalesView> {
                 ),
               ),
 
-          // ─── Product grid ──────────────────────────────
+          // ─── Product List/Grid ────────────────────────────
           Expanded(
             child: filteredProducts.isEmpty
                 ? Padding(
@@ -135,33 +176,48 @@ class _SalesViewState extends State<SalesView> {
                       ),
                     ),
                 )
-                : ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    itemCount: filteredProducts.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final product = filteredProducts[index];
-                      return ProductTile(
-                        product: product,
-                        onTap: () => txCtrl.addToCart(product),
-                        trailing: product.stockQuantity > 0
-                            ? Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor
-                                      .withValues(alpha: 0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.add,
-                                    color: AppTheme.primaryColor, size: 20),
-                              )
-                            : Text('Habis',
-                                style: TextStyle(
-                                    color: Colors.grey.shade400,
-                                    fontWeight: FontWeight.w600)),
-                      );
-                    },
-                  ),
+                : _isGridView
+                    ? GridView.builder(
+                        padding: const EdgeInsets.all(8),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 0.54,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                        ),
+                        itemCount: filteredProducts.length,
+                        itemBuilder: (context, index) {
+                          final product = filteredProducts[index];
+                          return _buildProductGridCard(product, context, txCtrl);
+                        },
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        itemCount: filteredProducts.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final product = filteredProducts[index];
+                          return ProductTile(
+                            product: product,
+                            onTap: () => txCtrl.addToCart(product),
+                            trailing: product.stockQuantity > 0
+                                ? Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primaryColor
+                                          .withValues(alpha: 0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.add,
+                                        color: AppTheme.primaryColor, size: 20),
+                                  )
+                                : Text('Habis',
+                                    style: TextStyle(
+                                        color: Colors.grey.shade400,
+                                        fontWeight: FontWeight.w600)),
+                          );
+                        },
+                      ),
           ),
 
           // ─── Cart summary ─────────────────────────────
@@ -386,6 +442,278 @@ class _SalesViewState extends State<SalesView> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Build a product card for grid view layout
+  Widget _buildProductGridCard(
+    Product product,
+    BuildContext context,
+    TransactionController txCtrl,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isOutOfStock = product.stockQuantity == 0;
+    final isLowStock = !isOutOfStock && product.stockQuantity <= product.minStock;
+    final hasImage = product.imagePath != null && product.imagePath!.isNotEmpty;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: isOutOfStock
+            ? null
+            : () {
+                txCtrl.addToCart(product);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        const Icon(Icons.check_circle, color: Colors.white, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text('${product.name} ditambahkan ke keranjang')),
+                      ],
+                    ),
+                    backgroundColor: Colors.green.shade700,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    duration: const Duration(milliseconds: 1200),
+                  ),
+                );
+              },
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            color: isDark ? const Color(0xFF1E1E2E) : Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: isDark
+                    ? Colors.black.withOpacity(0.4)
+                    : Colors.black.withOpacity(0.07),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Image Section ──
+              Expanded(
+                flex: 5,
+                child: ClipRRect(
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(16)),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // Background / image
+                      if (hasImage)
+                        Image.file(
+                          File(product.imagePath!),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              _gridCardImagePlaceholder(isDark),
+                        )
+                      else
+                        _gridCardImagePlaceholder(isDark),
+
+                      // Out-of-stock dark overlay
+                      if (isOutOfStock)
+                        Container(color: Colors.black.withOpacity(0.45)),
+
+                      // Gradient overlay at bottom of image
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        height: 40,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                              colors: [
+                                Colors.black.withOpacity(0.4),
+                                Colors.transparent,
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // Status badge
+                      if (isOutOfStock)
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade600,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text(
+                              'Habis',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        )
+                      else if (isLowStock)
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade600,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text(
+                              'Hampir habis',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ── Details Section ──
+              Expanded(
+                flex: 3,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        product.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          height: 1.2,
+                          color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+                        ),
+                      ),
+                      const Spacer(),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Rp ${formatCurrency(product.sellingPrice)}',
+                                  style: TextStyle(
+                                    color: Colors.green.shade400,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Stok: ${product.stockQuantity} ${product.unit}',
+                                  style: TextStyle(
+                                    color: isDark
+                                        ? Colors.grey.shade500
+                                        : Colors.grey.shade500,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ── Add Button ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: double.infinity,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    gradient: isOutOfStock
+                        ? null
+                        : LinearGradient(
+                            colors: [
+                              Colors.green.shade500,
+                              Colors.teal.shade500,
+                            ],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                    color: isOutOfStock
+                        ? (isDark ? Colors.grey.shade800 : Colors.grey.shade200)
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        isOutOfStock ? Icons.remove_shopping_cart_outlined : Icons.add_rounded,
+                        size: 15,
+                        color: isOutOfStock
+                            ? Colors.grey.shade500
+                            : Colors.white,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        isOutOfStock ? 'Stok Habis' : 'Tambah',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                          color: isOutOfStock
+                              ? Colors.grey.shade500
+                              : Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _gridCardImagePlaceholder(bool isDark) {
+    return Container(
+      color: isDark ? const Color(0xFF2A2A3E) : const Color(0xFFF0F0F8),
+      child: Center(
+        child: Icon(
+          Icons.storefront_outlined,
+          size: 44,
+          color: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
         ),
       ),
     );
