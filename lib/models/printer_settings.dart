@@ -51,7 +51,7 @@ class PrinterSettings {
     this.showPaymentDetails = true,
     this.footerText = 'Terima kasih atas kunjungan Anda!',
     this.footerSecondLine = '— Powered by Metal —',
-    this.feedLinesAfter = 3,
+    this.feedLinesAfter = 2,
     this.autoCut = true,
     this.printDuplicate = false,
     this.fontScale = 1,
@@ -78,6 +78,15 @@ class PrinterSettings {
   static Future<PrinterSettings> load() async {
     final p = await SharedPreferences.getInstance();
     final paperSize = p.getString('ps_paper_size') ?? '57mm';
+
+    // v2 migration: reset wasteful defaults (feedLines 3→1, autoCut true→false)
+    const int _settingsVersion = 2;
+    if ((p.getInt('ps_version') ?? 1) < _settingsVersion) {
+      await p.setInt('ps_feed_lines', 1);
+      await p.setBool('ps_auto_cut', false);
+      await p.setInt('ps_version', _settingsVersion);
+    }
+
     return PrinterSettings(
       paperSize: paperSize,
       paperWidthDots: dotsForPaperSize(paperSize),
@@ -95,8 +104,8 @@ class PrinterSettings {
       showPaymentDetails: p.getBool('ps_show_payment') ?? true,
       footerText: p.getString('ps_footer_text') ?? 'Terima kasih atas kunjungan Anda!',
       footerSecondLine: p.getString('ps_footer_second') ?? '— Powered by Metal —',
-      feedLinesAfter: p.getInt('ps_feed_lines') ?? 3,
-      autoCut: p.getBool('ps_auto_cut') ?? true,
+      feedLinesAfter: p.getInt('ps_feed_lines') ?? 1,
+      autoCut: p.getBool('ps_auto_cut') ?? false,
       printDuplicate: p.getBool('ps_print_dup') ?? false,
       fontScale: p.getInt('ps_font_scale') ?? 1,
       savedPrinterName: p.getString('ps_printer_name'),
