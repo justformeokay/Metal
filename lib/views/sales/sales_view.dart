@@ -181,7 +181,7 @@ class _SalesViewState extends State<SalesView> {
                         padding: const EdgeInsets.all(8),
                         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
-                          childAspectRatio: 0.54,
+                          childAspectRatio: 0.68,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
                         ),
@@ -447,6 +447,24 @@ class _SalesViewState extends State<SalesView> {
     );
   }
 
+  /// Pick a vivid accent colour deterministically from the product id/name.
+  Color _cardAccent(Product product) {
+    const palette = [
+      Color(0xFF10B981), // emerald
+      Color(0xFF3B82F6), // blue
+      Color(0xFFF59E0B), // amber
+      Color(0xFF8B5CF6), // violet
+      Color(0xFFEF4444), // red
+      Color(0xFF06B6D4), // cyan
+      Color(0xFFEC4899), // pink
+      Color(0xFF14B8A6), // teal
+      Color(0xFFF97316), // orange
+      Color(0xFF6366F1), // indigo
+    ];
+    final hash = product.id.hashCode;
+    return palette[hash.abs() % palette.length];
+  }
+
   /// Build a product card for grid view layout
   Widget _buildProductGridCard(
     Product product,
@@ -457,11 +475,13 @@ class _SalesViewState extends State<SalesView> {
     final isOutOfStock = product.stockQuantity == 0;
     final isLowStock = !isOutOfStock && product.stockQuantity <= product.minStock;
     final hasImage = product.imagePath != null && product.imagePath!.isNotEmpty;
+    final accent = _cardAccent(product);
+    final cardBg = isDark ? const Color(0xFF0F1117) : Colors.white;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         onTap: isOutOfStock
             ? null
             : () {
@@ -475,7 +495,7 @@ class _SalesViewState extends State<SalesView> {
                         Expanded(child: Text('${product.name} ditambahkan ke keranjang')),
                       ],
                     ),
-                    backgroundColor: Colors.green.shade700,
+                    backgroundColor: accent.withOpacity(0.85),
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     duration: const Duration(milliseconds: 1200),
@@ -484,106 +504,117 @@ class _SalesViewState extends State<SalesView> {
               },
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            color: isDark ? const Color(0xFF1E1E2E) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            color: cardBg,
+            border: Border.all(
+              color: isOutOfStock
+                  ? Colors.grey.withOpacity(0.2)
+                  : accent.withOpacity(isDark ? 0.3 : 0.25),
+              width: 1,
+            ),
             boxShadow: [
               BoxShadow(
-                color: isDark
-                    ? Colors.black.withOpacity(0.4)
-                    : Colors.black.withOpacity(0.07),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+                color: isOutOfStock
+                    ? Colors.black.withOpacity(0.05)
+                    : accent.withOpacity(isDark ? 0.12 : 0.08),
+                blurRadius: 18,
+                offset: const Offset(0, 5),
               ),
             ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Image Section ──
+              // ── Image / icon area ──
               Expanded(
                 flex: 5,
                 child: ClipRRect(
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(16)),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      // Background / image
+                      // Tinted placeholder bg or image
                       if (hasImage)
                         Image.file(
                           File(product.imagePath!),
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) =>
-                              _gridCardImagePlaceholder(isDark),
+                              _gridCardImagePlaceholder(isDark, accent),
                         )
                       else
-                        _gridCardImagePlaceholder(isDark),
+                        _gridCardImagePlaceholder(isDark, accent),
 
-                      // Out-of-stock dark overlay
+                      // Out-of-stock overlay
                       if (isOutOfStock)
-                        Container(color: Colors.black.withOpacity(0.45)),
+                        Container(color: Colors.black.withOpacity(0.5)),
 
-                      // Gradient overlay at bottom of image
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        height: 40,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.bottomCenter,
-                              end: Alignment.topCenter,
-                              colors: [
-                                Colors.black.withOpacity(0.4),
-                                Colors.transparent,
-                              ],
+                      // Bottom gradient — hanya show jika ada image
+                      if (hasImage)
+                        Positioned(
+                          left: 0, right: 0, bottom: 0, height: 36,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.bottomCenter,
+                                end: Alignment.topCenter,
+                                colors: [
+                                  cardBg.withOpacity(0.85),
+                                  Colors.transparent,
+                                ],
+                              ),
                             ),
                           ),
+                        ),
+
+                      // Top-left accent dot stripe
+                      Positioned(
+                        top: 10, left: 10,
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 6, height: 6,
+                              decoration: BoxDecoration(
+                                color: isOutOfStock ? Colors.grey : accent,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
 
                       // Status badge
                       if (isOutOfStock)
                         Positioned(
-                          top: 8,
-                          right: 8,
+                          top: 8, right: 8,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: Colors.red.shade600,
+                              color: Colors.red.shade700,
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: const Text(
                               'Habis',
                               style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.5,
+                                color: Colors.white, fontSize: 9,
+                                fontWeight: FontWeight.w800, letterSpacing: 0.4,
                               ),
                             ),
                           ),
                         )
                       else if (isLowStock)
                         Positioned(
-                          top: 8,
-                          right: 8,
+                          top: 8, right: 8,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: Colors.orange.shade600,
+                              color: Colors.orange.shade700,
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: const Text(
-                              'Hampir habis',
+                              'Menipis',
                               style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.3,
+                                color: Colors.white, fontSize: 9,
+                                fontWeight: FontWeight.w800, letterSpacing: 0.3,
                               ),
                             ),
                           ),
@@ -593,7 +624,7 @@ class _SalesViewState extends State<SalesView> {
                 ),
               ),
 
-              // ── Details Section ──
+              // ── Details ──
               Expanded(
                 flex: 3,
                 child: Padding(
@@ -608,41 +639,27 @@ class _SalesViewState extends State<SalesView> {
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
-                          height: 1.2,
-                          color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+                          height: 1.25,
+                          color: isDark ? Colors.white : const Color(0xFF1A1F2E),
                         ),
                       ),
                       const Spacer(),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Rp ${formatCurrency(product.sellingPrice)}',
-                                  style: TextStyle(
-                                    color: Colors.green.shade400,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Stok: ${product.stockQuantity} ${product.unit}',
-                                  style: TextStyle(
-                                    color: isDark
-                                        ? Colors.grey.shade500
-                                        : Colors.grey.shade500,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                      Text(
+                        formatCurrency(product.sellingPrice),
+                        style: TextStyle(
+                          color: isOutOfStock ? Colors.grey : accent,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Stok: ${product.stockQuantity} ${product.unit}',
+                        style: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontSize: 10,
+                        ),
                       ),
                       const SizedBox(height: 8),
                     ],
@@ -653,8 +670,7 @@ class _SalesViewState extends State<SalesView> {
               // ── Add Button ──
               Padding(
                 padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
+                child: Container(
                   width: double.infinity,
                   height: 34,
                   decoration: BoxDecoration(
@@ -662,26 +678,26 @@ class _SalesViewState extends State<SalesView> {
                     gradient: isOutOfStock
                         ? null
                         : LinearGradient(
-                            colors: [
-                              Colors.green.shade500,
-                              Colors.teal.shade500,
-                            ],
+                            colors: [accent, accent.withOpacity(0.75)],
                             begin: Alignment.centerLeft,
                             end: Alignment.centerRight,
                           ),
                     color: isOutOfStock
-                        ? (isDark ? Colors.grey.shade800 : Colors.grey.shade200)
+                        ? (isDark ? Colors.grey.shade800 : Colors.grey.shade100)
+                        : null,
+                    border: isOutOfStock
+                        ? Border.all(color: Colors.grey.withOpacity(0.2))
                         : null,
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        isOutOfStock ? Icons.remove_shopping_cart_outlined : Icons.add_rounded,
+                        isOutOfStock
+                            ? Icons.remove_shopping_cart_outlined
+                            : Icons.add_rounded,
                         size: 15,
-                        color: isOutOfStock
-                            ? Colors.grey.shade500
-                            : Colors.white,
+                        color: isOutOfStock ? Colors.grey.shade400 : Colors.white,
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -690,9 +706,7 @@ class _SalesViewState extends State<SalesView> {
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.3,
-                          color: isOutOfStock
-                              ? Colors.grey.shade500
-                              : Colors.white,
+                          color: isOutOfStock ? Colors.grey.shade400 : Colors.white,
                         ),
                       ),
                     ],
@@ -706,14 +720,19 @@ class _SalesViewState extends State<SalesView> {
     );
   }
 
-  Widget _gridCardImagePlaceholder(bool isDark) {
+  Widget _gridCardImagePlaceholder(bool isDark, [Color? accent]) {
+    final color = accent ?? Colors.grey;
     return Container(
-      color: isDark ? const Color(0xFF2A2A3E) : const Color(0xFFF0F0F8),
+      color: isDark
+          ? color.withOpacity(0.08)
+          : color.withOpacity(0.06),
       child: Center(
         child: Icon(
           Icons.storefront_outlined,
           size: 44,
-          color: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
+          color: isDark
+              ? color.withOpacity(0.35)
+              : color.withOpacity(0.25),
         ),
       ),
     );
