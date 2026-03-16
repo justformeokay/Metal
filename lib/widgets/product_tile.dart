@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/product.dart';
 import '../utils/formatters.dart';
@@ -30,27 +31,8 @@ class ProductTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            // Product icon
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: Text(
-                  product.name.isNotEmpty
-                      ? product.name[0].toUpperCase()
-                      : '?',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.primaryColor,
-                  ),
-                ),
-              ),
-            ),
+            // Product icon / image
+            _buildLeading(),
             const SizedBox(width: 12),
 
             // Product info
@@ -134,6 +116,47 @@ class ProductTile extends StatelessWidget {
 
             if (trailing != null) trailing!,
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLeading() {
+    final hasImage = product.imagePath != null &&
+        product.imagePath!.isNotEmpty &&
+        File(product.imagePath!).existsSync();
+
+    if (hasImage) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.file(
+          File(product.imagePath!),
+          width: 48,
+          height: 48,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _defaultIcon(),
+        ),
+      );
+    }
+    return _defaultIcon();
+  }
+
+  Widget _defaultIcon() {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Center(
+        child: Text(
+          product.name.isNotEmpty ? product.name[0].toUpperCase() : '?',
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.primaryColor,
+          ),
         ),
       ),
     );

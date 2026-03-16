@@ -123,6 +123,7 @@ class ProductController extends ChangeNotifier {
     String unit = 'pcs',
     String category = 'Umum',
     String? scannedBarcode,
+    String? imagePath,
   }) async {
     // Use scanned barcode from packaging, or auto-generate one
     final barcode = scannedBarcode ?? await _generateUniqueBarcode();
@@ -137,6 +138,7 @@ class ProductController extends ChangeNotifier {
       unit: unit,
       category: category,
       barcode: barcode,
+      imagePath: imagePath,
     );
     await _db.insertProduct(product);
     await loadProducts();

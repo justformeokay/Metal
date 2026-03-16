@@ -1,5 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/product_controller.dart';
 import '../../models/product.dart';
@@ -29,6 +33,7 @@ class _ProductFormViewState extends State<ProductFormView> {
   late String _category;
   DateTime? _expiryDate;
   String? _scannedBarcode;
+  String? _imagePath; // local file path of picked image
 
   bool get isEditing => widget.product != null;
 
@@ -48,6 +53,7 @@ class _ProductFormViewState extends State<ProductFormView> {
     _category = widget.product?.category ?? 'Umum';
     _expiryDate = widget.product?.expiryDate;
     _scannedBarcode = widget.product?.barcode;
+    _imagePath = widget.product?.imagePath;
   }
 
   @override
@@ -74,6 +80,10 @@ class _ProductFormViewState extends State<ProductFormView> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
+            // ─── Photo section ────────────────────────────
+            _buildPhotoSection(),
+            const SizedBox(height: 16),
+
             // Product name
             TextFormField(
               controller: _nameCtrl,
@@ -345,8 +355,7 @@ class _ProductFormViewState extends State<ProductFormView> {
     );
   }
 
-  Future<void> _scanPackageBarcode() async {
-    final code = await Navigator.push<String>(
+  Future<void> _scanPackageBarcode() async {    final code = await Navigator.push<String>(
       context,
       MaterialPageRoute(builder: (_) => const BarcodeScannerView()),
     );
@@ -386,6 +395,8 @@ class _ProductFormViewState extends State<ProductFormView> {
         unit: _unit,
         category: _category,
         barcode: _scannedBarcode,
+        imagePath: _imagePath,
+        clearImagePath: _imagePath == null,
       );
       await ctrl.updateProduct(updated);
     } else {
@@ -399,9 +410,154 @@ class _ProductFormViewState extends State<ProductFormView> {
         unit: _unit,
         category: _category,
         scannedBarcode: _scannedBarcode,
+        imagePath: _imagePath,
       );
     }
 
     if (mounted) Navigator.pop(context);
+  }
+
+  Widget _buildPhotoSection() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final hasImage = _imagePath != null && File(_imagePath!).existsSync();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: hasImage
+              ? AppTheme.primaryColor.withValues(alpha: 0.3)
+              : (isDark ? Colors.grey.shade800 : Colors.grey.shade300),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.image_rounded,
+                  size: 20,
+                  color: isDark ? Colors.white70 : Colors.grey.shade700),
+              const SizedBox(width: 8),
+              Text(
+                'Foto Produk',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : Colors.grey.shade800,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'Opsional',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isDark ? Colors.grey.shade500 : Colors.grey.shade500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (hasImage) ...[
+            // Preview image
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.file(
+                File(_imagePath!),
+                width: double.infinity,
+                height: 160,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _pickImage(ImageSource.gallery),
+                    icon: const Icon(Icons.photo_library_rounded, size: 16),
+                    label: const Text('Ganti'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  onPressed: () => setState(() => _imagePath = null),
+                  icon: const Icon(Icons.delete_outline_rounded, size: 16,
+                      color: Colors.red),
+                  label: const Text('Hapus',
+                      style: TextStyle(color: Colors.red)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.red),
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
+            Text(
+              'Tambahkan foto produk dari galeri atau kamera.',
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _pickImage(ImageSource.gallery),
+                    icon: const Icon(Icons.photo_library_rounded, size: 18),
+                    label: const Text('Galeri'),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _pickImage(ImageSource.camera),
+                    icon: const Icon(Icons.camera_alt_rounded, size: 18),
+                    label: const Text('Kamera'),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: source,
+      maxWidth: 800,
+      maxHeight: 800,
+      imageQuality: 85,
+    );
+    if (picked == null || !mounted) return;
+
+    // Copy to permanent app directory so it survives cache clears
+    final appDir = await getApplicationDocumentsDirectory();
+    final destDir = Directory(p.join(appDir.path, 'product_images'));
+    if (!destDir.existsSync()) destDir.createSync(recursive: true);
+
+    final ext = p.extension(picked.path).isNotEmpty ? p.extension(picked.path) : '.jpg';
+    final fileName = '${widget.product?.id ?? DateTime.now().millisecondsSinceEpoch}$ext';
+    final destPath = p.join(destDir.path, fileName);
+    await File(picked.path).copy(destPath);
+
+    setState(() => _imagePath = destPath);
   }
 }

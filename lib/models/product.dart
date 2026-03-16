@@ -10,6 +10,7 @@ class Product {
   final int minStock; // minimum stock threshold per product
   final DateTime? expiryDate; // optional expiration date
   final String? barcode; // barcode / QR code value
+  final String? imagePath; // local image file path (optional)
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -24,6 +25,7 @@ class Product {
     this.minStock = 5,
     this.expiryDate,
     this.barcode,
+    this.imagePath,
     DateTime? createdAt,
     DateTime? updatedAt,
   })  : createdAt = createdAt ?? DateTime.now(),
@@ -46,8 +48,7 @@ class Product {
       expiryDate!.isBefore(DateTime.now().add(const Duration(days: 7)));
 
   /// Days until expiry (negative = already expired).
-  int? get daysUntilExpiry =>
-      expiryDate != null ? expiryDate!.difference(DateTime.now()).inDays : null;
+  int? get daysUntilExpiry => expiryDate?.difference(DateTime.now()).inDays;
 
   /// Profit margin per unit.
   double get profitPerUnit => sellingPrice - costPrice;
@@ -69,6 +70,8 @@ class Product {
     bool clearExpiryDate = false,
     String? barcode,
     bool clearBarcode = false,
+    String? imagePath,
+    bool clearImagePath = false,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -83,6 +86,7 @@ class Product {
       minStock: minStock ?? this.minStock,
       expiryDate: clearExpiryDate ? null : (expiryDate ?? this.expiryDate),
       barcode: clearBarcode ? null : (barcode ?? this.barcode),
+      imagePath: clearImagePath ? null : (imagePath ?? this.imagePath),
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
     );
@@ -100,6 +104,7 @@ class Product {
       'minStock': minStock,
       'expiryDate': expiryDate?.toIso8601String(),
       'barcode': barcode,
+      'imagePath': imagePath,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
@@ -119,6 +124,7 @@ class Product {
           ? DateTime.tryParse(map['expiryDate'] as String)
           : null,
       barcode: map['barcode'] as String?,
+      imagePath: map['imagePath'] as String?,
       createdAt: DateTime.parse(map['createdAt'] as String),
       updatedAt: DateTime.parse(map['updatedAt'] as String),
     );

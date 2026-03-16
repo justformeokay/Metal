@@ -61,7 +61,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 9,
+      version: 10,
       onCreate: _createTables,
       onUpgrade: _upgradeTables,
     );
@@ -81,6 +81,7 @@ class DatabaseService {
         minStock INTEGER NOT NULL DEFAULT 5,
         expiryDate TEXT,
         barcode TEXT,
+        imagePath TEXT,
         createdAt TEXT NOT NULL,
         updatedAt TEXT NOT NULL
       )
@@ -223,6 +224,9 @@ class DatabaseService {
       ''');
       await db.execute('ALTER TABLE transactions ADD COLUMN memberId TEXT');
       await db.execute('ALTER TABLE transactions ADD COLUMN memberDiscountApplied REAL NOT NULL DEFAULT 0');
+    }
+    if (oldVersion < 10) {
+      await db.execute('ALTER TABLE products ADD COLUMN imagePath TEXT');
     }
   }
 
