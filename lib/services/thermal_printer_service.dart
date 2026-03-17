@@ -200,12 +200,24 @@ class ThermalPrinterService {
     ]);
     bytes.addAll(rasterData);
 
+    // Reset printer state after raster image:
+    // Some portable printers leave print head at wrong position after GS v 0.
+    // LF flushes, ESC 2 restores default line spacing, GS ! 0 resets char size,
+    // ESC a 0 resets alignment to left so generator can re-set it cleanly.
+    bytes.addAll([0x0A]);           // LF — flush + advance
+    bytes.addAll([0x1B, 0x32]);     // ESC 2 — default line spacing
+    bytes.addAll([0x1D, 0x21, 0x00]); // GS ! 0 — normal char size 1x1
+    bytes.addAll([0x1B, 0x61, 0x00]); // ESC a 0 — left align
+
     return bytes;
   }
 
   /// Sanitize text for ESC/POS printer (ASCII-safe).
   String _sanitize(String text) {
     return text
+        .replaceAll('\r\n', ' ')
+        .replaceAll('\r', ' ')
+        .replaceAll('\n', ' ')
         .replaceAll('\u2014', '-')  // em dash
         .replaceAll('\u2013', '-')  // en dash
         .replaceAll('\u2018', "'") // left single quote
@@ -213,7 +225,8 @@ class ThermalPrinterService {
         .replaceAll('\u201C', '"') // left double quote
         .replaceAll('\u201D', '"') // right double quote
         .replaceAll('\u2026', '...') // ellipsis
-        .replaceAll(RegExp(r'[^\x00-\x7F]'), ''); // strip remaining non-ASCII
+        .replaceAll(RegExp(r'[^\x20-\x7E]'), '') // keep only printable ASCII
+        .trim();
   }
 
   /// Generate ESC/POS receipt bytes using settings.
