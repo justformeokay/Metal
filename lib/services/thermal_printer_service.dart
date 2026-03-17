@@ -244,9 +244,9 @@ class ThermalPrinterService {
     if (settings.showLogo && store.logoUrl != null && store.logoUrl!.isNotEmpty) {
       final logoImg = await _loadLogoImage(store.logoUrl);
       if (logoImg != null) {
-        // Max print width in dots
-        final maxWidth = settings.paperSize == '80mm' ? 576 : 384;
-        int targetW = logoImg.width > maxWidth ? maxWidth : logoImg.width;
+        // Target ~50% of paper width for a compact logo
+        final halfWidth = settings.paperSize == '80mm' ? 288 : 192;
+        int targetW = logoImg.width > halfWidth ? halfWidth : logoImg.width;
         // Round down to multiple of 8
         targetW = (targetW ~/ 8) * 8;
         if (targetW < 8) targetW = 8;
@@ -295,6 +295,14 @@ class ThermalPrinterService {
     }
 
     bytes += generator.hr(ch: '=');
+
+    // ─── Customer Name ──────────────────────────
+    if (transaction.customerName != null && transaction.customerName!.isNotEmpty) {
+      bytes += generator.text(
+        'Kepada: ${_sanitize(transaction.customerName!)}',
+        styles: const PosStyles(align: PosAlign.left, bold: true),
+      );
+    }
 
     // ─── Date & Transaction ID ──────────────────
     if (settings.showDateTime) {

@@ -853,6 +853,7 @@ class _SalesViewState extends State<SalesView> {
     final transferAccountNumber = result['transferAccountNumber'] as String?;
     final memberId = result['memberId'] as String?;
     final memberDiscountApplied = result['memberDiscountApplied'] as double? ?? 0;
+    final customerName = result['customerName'] as String?;
 
     final tx = await txCtrl.completeSale(
       amountPaid: amountPaid,
@@ -861,6 +862,7 @@ class _SalesViewState extends State<SalesView> {
       transferAccountNumber: transferAccountNumber,
       memberId: memberId,
       memberDiscountApplied: memberDiscountApplied,
+      customerName: customerName,
     );
     if (tx != null && mounted) {
       // Refresh product stock
@@ -1144,6 +1146,8 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
   List<Member> _memberSearchResults = [];
   bool _isSearchingMember = false;
   final TextEditingController _memberSearchCtrl = TextEditingController();
+  final TextEditingController _customerNameCtrl = TextEditingController();
+  bool _showCustomerName = false;
   final DatabaseService _db = DatabaseService();
 
   @override
@@ -1159,6 +1163,7 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
     _amountCtrl.dispose();
     _accountNumberCtrl.dispose();
     _memberSearchCtrl.dispose();
+    _customerNameCtrl.dispose();
     super.dispose();
   }
 
@@ -1628,6 +1633,64 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
 
                   const SizedBox(height: 24),
 
+                  // ─── Customer Name ───
+                  Row(
+                    children: [
+                      Icon(Icons.person_outline_rounded,
+                          size: 18, color: AppTheme.primaryColor),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Nama Customer',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                      const Spacer(),
+                      Switch(
+                        value: _showCustomerName,
+                        onChanged: (v) => setState(() {
+                          _showCustomerName = v;
+                          if (!v) _customerNameCtrl.clear();
+                        }),
+                        activeColor: AppTheme.primaryColor,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ],
+                  ),
+                  if (_showCustomerName) ...
+                    [
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _customerNameCtrl,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: InputDecoration(
+                          hintText: 'Contoh: Budi Santoso',
+                          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                          prefixIcon: const Icon(Icons.person_rounded, size: 20),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppTheme.border),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: AppTheme.border),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                                color: AppTheme.primaryColor, width: 1.5),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                          isDense: true,
+                        ),
+                      ),
+                    ],
+
+                  const SizedBox(height: 24),
+
                   // ─── Payment Method selector ───
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -2017,6 +2080,9 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
                                       'transferAccountNumber': _accountNumberCtrl.text,
                                       'memberId': _selectedMember?.id,
                                       'memberDiscountApplied': _memberDiscountAmount,
+                                      'customerName': _showCustomerName && _customerNameCtrl.text.trim().isNotEmpty
+                                          ? _customerNameCtrl.text.trim()
+                                          : null,
                                     },
                                   );
                                 }

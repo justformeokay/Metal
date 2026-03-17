@@ -179,6 +179,26 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
                 _dashedDivider(),
                 const SizedBox(height: 8),
 
+                // Customer name
+                if (widget.transaction.customerName != null) ...[
+                  Row(
+                    children: [
+                      const Icon(Icons.person_outline_rounded,
+                          size: 13, color: Colors.black45),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Kepada: ${widget.transaction.customerName!}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                ],
+
                 // Date & ID
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,

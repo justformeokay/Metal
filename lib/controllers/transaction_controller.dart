@@ -126,6 +126,7 @@ class TransactionController extends ChangeNotifier {
     String? transferAccountNumber,
     String? memberId,
     double memberDiscountApplied = 0,
+    String? customerName,
   }) async {
     if (_cart.isEmpty) return null;
 
@@ -154,6 +155,7 @@ class TransactionController extends ChangeNotifier {
       transferAccountNumber: transferAccountNumber,
       memberId: memberId,
       memberDiscountApplied: memberDiscountApplied,
+      customerName: customerName?.trim().isEmpty == true ? null : customerName?.trim(),
     );
 
     await _db.insertTransaction(transaction);

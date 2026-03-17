@@ -85,6 +85,7 @@ class SalesTransaction {
   final String? transferAccountNumber; // Account number for transfer
   final String? memberId; // Linked member ID
   final double memberDiscountApplied; // Member discount amount applied
+  final String? customerName; // Optional customer name printed on receipt
 
   SalesTransaction({
     required this.id,
@@ -100,6 +101,7 @@ class SalesTransaction {
     this.transferAccountNumber,
     this.memberId,
     this.memberDiscountApplied = 0,
+    this.customerName,
   }) : date = date ?? DateTime.now();
 
   /// Change from payment.
@@ -122,6 +124,7 @@ class SalesTransaction {
       'transferAccountNumber': transferAccountNumber,
       'memberId': memberId,
       'memberDiscountApplied': memberDiscountApplied,
+      'customerName': customerName,
     };
   }
 
@@ -143,6 +146,7 @@ class SalesTransaction {
       transferAccountNumber: map['transferAccountNumber'] as String?,
       memberId: map['memberId'] as String?,
       memberDiscountApplied: (map['memberDiscountApplied'] as num?)?.toDouble() ?? 0,
+      customerName: map['customerName'] as String?,
     );
   }
 }

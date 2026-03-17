@@ -61,7 +61,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 11,
+      version: 12,
       onCreate: _createTables,
       onUpgrade: _upgradeTables,
     );
@@ -107,7 +107,8 @@ class DatabaseService {
         transferBank TEXT,
         transferAccountNumber TEXT,
         memberId TEXT,
-        memberDiscountApplied REAL NOT NULL DEFAULT 0
+        memberDiscountApplied REAL NOT NULL DEFAULT 0,
+        customerName TEXT
       )
     ''');
 
@@ -239,6 +240,9 @@ class DatabaseService {
       await db.execute('ALTER TABLE products ADD COLUMN discountPercent REAL NOT NULL DEFAULT 0');
       await db.execute('ALTER TABLE products ADD COLUMN discountStartDate TEXT');
       await db.execute('ALTER TABLE products ADD COLUMN discountEndDate TEXT');
+    }
+    if (oldVersion < 12) {
+      await db.execute('ALTER TABLE transactions ADD COLUMN customerName TEXT');
     }
   }
 
