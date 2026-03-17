@@ -14,6 +14,7 @@ import '../../widgets/loading_indicator.dart';
 import '../../widgets/transaction_list_item.dart';
 import '../../widgets/empty_state.dart';
 import '../products/stock_alerts_view.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../calculator/standard_calculator_view.dart';
 import '../calculator/finance_calculator_view.dart';
 import 'transaction_detail_sheet.dart';
@@ -622,6 +623,9 @@ class _DashboardViewState extends State<DashboardView> {
                     },
                   ),
 
+                  // ─── Today's Analytics ──────────────────────
+                  _buildTodayAnalyticsSection(),
+
                   // ─── Recent Transactions ───────────────────
                   _sectionTitle('Transaksi Terbaru'),
                   const SizedBox(height: 12),
@@ -1149,6 +1153,391 @@ class _DashboardViewState extends State<DashboardView> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  // ─── Today's Analytics Section ─────────────────────────────────────────
+
+  Widget _buildTodayAnalyticsSection() {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final todayEnd = todayStart.add(const Duration(days: 1));
+    return FutureBuilder<AnalyticsData>(
+      future: AnalyticsService.getAnalytics(from: todayStart, to: todayEnd),
+      builder: (context, snap) {
+        if (!snap.hasData) return const SizedBox.shrink();
+        final analytics = snap.data!;
+        if (analytics.txCount == 0) return const SizedBox.shrink();
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final cardBg = isDark ? const Color(0xFF0F1117) : Colors.white;
+        final hourlyData = analytics.hourlySales
+            .where((h) => h.hour >= 6 && h.hour <= 22)
+            .toList()
+          ..sort((a, b) => a.hour.compareTo(b.hour));
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionTitle('Analitik Hari Ini'),
+            const SizedBox(height: 12),
+            if (hourlyData.isNotEmpty) ...
+              [
+                _buildHourlyChart(hourlyData, isDark, cardBg),
+                const SizedBox(height: 12),
+              ],
+            if (analytics.categorySales.isNotEmpty ||
+                analytics.products.isNotEmpty)
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (analytics.categorySales.isNotEmpty)
+                      Expanded(
+                        child: _buildCategoryPie(
+                            analytics.categorySales, isDark, cardBg),
+                      ),
+                    if (analytics.categorySales.isNotEmpty &&
+                        analytics.products.isNotEmpty)
+                      const SizedBox(width: 12),
+                    if (analytics.products.isNotEmpty)
+                      Expanded(
+                        child: _buildTopProductsList(
+                            analytics.products, isDark, cardBg),
+                      ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 24),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildHourlyChart(
+      List<HourlySalesData> data, bool isDark, Color cardBg) {
+    final maxY = data.map((e) => e.sales).fold<double>(0, (a, b) => a > b ? a : b) * 1.25;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border:
+            Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.bar_chart_rounded,
+                    size: 18, color: AppTheme.primaryColor),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'Distribusi Penjualan per Jam',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : const Color(0xFF1A1F2E),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 130,
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY: maxY <= 0 ? 100 : maxY,
+                barTouchData: BarTouchData(
+                  touchTooltipData: BarTouchTooltipData(
+                    getTooltipItem: (group, gIndex, rod, rIndex) {
+                      final hour = data[group.x].hour;
+                      return BarTooltipItem(
+                        '${hour.toString().padLeft(2, '0')}:00\n${formatCurrencyShort(rod.toY)}',
+                        const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600),
+                      );
+                    },
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        final idx = value.toInt();
+                        if (idx >= 0 && idx < data.length) {
+                          final h = data[idx].hour;
+                          if (h % 3 == 0) {
+                            return Text(
+                              '$h',
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: Colors.grey.shade500,
+                              ),
+                            );
+                          }
+                        }
+                        return const Text('');
+                      },
+                    ),
+                  ),
+                ),
+                gridData: const FlGridData(show: false),
+                borderData: FlBorderData(show: false),
+                barGroups: List.generate(data.length, (i) {
+                  return BarChartGroupData(x: i, barRods: [
+                    BarChartRodData(
+                      toY: data[i].sales,
+                      color: data[i].sales > 0
+                          ? AppTheme.primaryColor
+                          : AppTheme.primaryColor.withValues(alpha: 0.2),
+                      width: 8,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ]);
+                }),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryPie(
+      List<CategorySalesData> data, bool isDark, Color cardBg) {
+    final total = data.fold<double>(0, (sum, e) => sum + e.totalRevenue);
+    const colors = [
+      Color(0xFF2563EB),
+      Color(0xFF10B981),
+      Color(0xFFF59E0B),
+      Color(0xFFEF4444),
+      Color(0xFF8B5CF6),
+      Color(0xFF06B6D4),
+    ];
+    final sorted = [...data]
+      ..sort((a, b) => b.totalRevenue.compareTo(a.totalRevenue));
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border:
+            Border.all(color: AppTheme.accentColor.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Kategori',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white : const Color(0xFF1A1F2E),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 100,
+            child: PieChart(
+              PieChartData(
+                borderData: FlBorderData(show: false),
+                sectionsSpace: 2,
+                centerSpaceRadius: 28,
+                sections: List.generate(sorted.length, (i) {
+                  final pct =
+                      total > 0 ? sorted[i].totalRevenue / total * 100 : 0.0;
+                  return PieChartSectionData(
+                    color: colors[i % colors.length],
+                    value: sorted[i].totalRevenue,
+                    title: '${pct.toStringAsFixed(0)}%',
+                    radius: 30,
+                    titleStyle: const TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  );
+                }),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...sorted.take(4).toList().asMap().entries.map((entry) {
+            final i = entry.key;
+            final cat = entry.value;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: colors[i % colors.length],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Text(
+                      cat.category.isEmpty ? 'Lainnya' : cat.category,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: isDark
+                            ? Colors.grey.shade400
+                            : Colors.grey.shade600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopProductsList(
+      List<ProductAnalyticsData> data, bool isDark, Color cardBg) {
+    final top = data.take(5).toList();
+    final maxRevenue = top.isEmpty ? 1.0 : top.first.totalRevenue;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border:
+            Border.all(color: AppTheme.warningColor.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Produk Terlaris',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white : const Color(0xFF1A1F2E),
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...top.asMap().entries.map((entry) {
+            final i = entry.key;
+            final prod = entry.value;
+            final ratio =
+                maxRevenue > 0 ? prod.totalRevenue / maxRevenue : 0.0;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 16,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: AppTheme.warningColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${i + 1}',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.warningColor,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          prod.productName,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: isDark
+                                ? Colors.white70
+                                : const Color(0xFF1A1F2E),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                      Text(
+                        '\u00d7${prod.totalQty}',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.warningColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: LinearProgressIndicator(
+                      value: ratio,
+                      backgroundColor: isDark
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : Colors.grey.shade200,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppTheme.warningColor.withValues(alpha: 0.8),
+                      ),
+                      minHeight: 4,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
       ),
     );
   }
