@@ -61,7 +61,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 10,
+      version: 11,
       onCreate: _createTables,
       onUpgrade: _upgradeTables,
     );
@@ -82,6 +82,11 @@ class DatabaseService {
         expiryDate TEXT,
         barcode TEXT,
         imagePath TEXT,
+        discountEnabled INTEGER NOT NULL DEFAULT 0,
+        discountLabel TEXT,
+        discountPercent REAL NOT NULL DEFAULT 0,
+        discountStartDate TEXT,
+        discountEndDate TEXT,
         createdAt TEXT NOT NULL,
         updatedAt TEXT NOT NULL
       )
@@ -227,6 +232,13 @@ class DatabaseService {
     }
     if (oldVersion < 10) {
       await db.execute('ALTER TABLE products ADD COLUMN imagePath TEXT');
+    }
+    if (oldVersion < 11) {
+      await db.execute('ALTER TABLE products ADD COLUMN discountEnabled INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE products ADD COLUMN discountLabel TEXT');
+      await db.execute('ALTER TABLE products ADD COLUMN discountPercent REAL NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE products ADD COLUMN discountStartDate TEXT');
+      await db.execute('ALTER TABLE products ADD COLUMN discountEndDate TEXT');
     }
   }
 

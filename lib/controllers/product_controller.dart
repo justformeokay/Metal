@@ -124,6 +124,11 @@ class ProductController extends ChangeNotifier {
     String category = 'Umum',
     String? scannedBarcode,
     String? imagePath,
+    bool discountEnabled = false,
+    String? discountLabel,
+    double discountPercent = 0,
+    DateTime? discountStartDate,
+    DateTime? discountEndDate,
   }) async {
     // Use scanned barcode from packaging, or auto-generate one
     final barcode = scannedBarcode ?? await _generateUniqueBarcode();
@@ -139,6 +144,11 @@ class ProductController extends ChangeNotifier {
       category: category,
       barcode: barcode,
       imagePath: imagePath,
+      discountEnabled: discountEnabled,
+      discountLabel: discountLabel,
+      discountPercent: discountPercent,
+      discountStartDate: discountStartDate,
+      discountEndDate: discountEndDate,
     );
     await _db.insertProduct(product);
     await loadProducts();
