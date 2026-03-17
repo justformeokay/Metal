@@ -1,4 +1,9 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:http/http.dart' as http;
+import 'package:image/image.dart' as img;
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:esc_pos_utils_plus/esc_pos_utils_plus.dart';
 import '../models/printer_settings.dart';
@@ -106,12 +111,44 @@ class ThermalPrinterService {
   }
 
   /// Write bytes to printer via Bluetooth Classic SPP.
+  /// Sends data in chunks to avoid Bluetooth buffer overflow.
   Future<void> _writeBytes(List<int> bytes) async {
-    final result = await PrintBluetoothThermal.writeBytes(bytes);
-    if (!result) {
-      _connected = false;
-      _connectedName = null;
-      throw Exception('Gagal mengirim data ke printer. Koneksi terputus.');
+    const chunkSize = 500;
+    for (var i = 0; i < bytes.length; i += chunkSize) {
+      final end = (i + chunkSize > bytes.length) ? bytes.length : i + chunkSize;
+      final chunk = bytes.sublist(i, end);
+      final result = await PrintBluetoothThermal.writeBytes(chunk);
+      if (!result) {
+        _connected = false;
+        _connectedName = null;
+        throw Exception('Gagal mengirim data ke printer. Koneksi terputus.');
+      }
+      // Small delay between chunks to let printer process
+      if (end < bytes.length) {
+        await Future.delayed(const Duration(milliseconds: 50));
+      }
+    }
+  }
+
+  /// Load logo image from a URL or local file path. Returns null on failure.
+  Future<img.Image?> _loadLogoImage(String? logoUrl) async {
+    if (logoUrl == null || logoUrl.isEmpty) return null;
+    try {
+      List<int> bytes;
+      if (logoUrl.startsWith('http')) {
+        final response = await http
+            .get(Uri.parse(logoUrl))
+            .timeout(const Duration(seconds: 10));
+        if (response.statusCode != 200) return null;
+        bytes = response.bodyBytes;
+      } else {
+        final file = File(logoUrl);
+        if (!file.existsSync()) return null;
+        bytes = await file.readAsBytes();
+      }
+      return img.decodeImage(Uint8List.fromList(bytes));
+    } catch (_) {
+      return null;
     }
   }
 
@@ -150,6 +187,28 @@ class ThermalPrinterService {
     // Top margin
     if (settings.marginTop > 0) {
       bytes += generator.feed(settings.marginTop.toInt().clamp(0, 10));
+    }
+
+    // ─── Logo ────────────────────────────────────
+    if (settings.showLogo && store.logoUrl != null && store.logoUrl!.isNotEmpty) {
+      final logoImg = await _loadLogoImage(store.logoUrl);
+      if (logoImg != null) {
+        // Max print width in dots (must be multiple of 8)
+        final maxWidth = settings.paperSize == '80mm' ? 576 : 384;
+        // Scale down if wider, keep aspect ratio
+        int targetW = logoImg.width > maxWidth ? maxWidth : logoImg.width;
+        // Round down to nearest multiple of 8 (raster format requirement)
+        targetW = (targetW ~/ 8) * 8;
+        if (targetW < 8) targetW = 8;
+
+        final resized = img.copyResize(
+          logoImg,
+          width: targetW,
+          interpolation: img.Interpolation.average,
+        );
+        bytes += generator.imageRaster(resized, align: PosAlign.center);
+        bytes += generator.feed(1);
+      }
     }
 
     // ─── Header ─────────────────────────────────

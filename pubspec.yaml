@@ -52,6 +52,7 @@ dependencies:
   # Bluetooth thermal printer (Classic SPP)
   print_bluetooth_thermal: ^1.1.1
   esc_pos_utils_plus: ^2.0.4
+  image: ^4.5.0
 
   # Date formatting
   intl: ^0.20.2
@@ -72,6 +73,9 @@ dependencies:
   # URL launcher
   url_launcher: ^6.3.0
   package_info_plus: ^9.0.0
+
+  # Runtime permissions
+  permission_handler: ^11.3.1
   mobile_scanner: ^7.2.0
   barcode_widget: ^2.0.4
   gal: ^2.3.2

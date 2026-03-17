@@ -41,7 +41,7 @@ class PrinterSettings {
     this.marginRight = 0,
     this.marginTop = 0,
     this.marginBottom = 0,
-    this.showLogo = false,
+    this.showLogo = true,
     this.showAddress = true,
     this.showPhone = true,
     this.showDescription = true,
@@ -80,10 +80,14 @@ class PrinterSettings {
     final paperSize = p.getString('ps_paper_size') ?? '57mm';
 
     // v2 migration: reset wasteful defaults (feedLines 3→1, autoCut true→false)
-    const int _settingsVersion = 2;
-    if ((p.getInt('ps_version') ?? 1) < _settingsVersion) {
+    const int _settingsVersion = 3;
+    if ((p.getInt('ps_version') ?? 1) < 2) {
       await p.setInt('ps_feed_lines', 1);
       await p.setBool('ps_auto_cut', false);
+    }
+    // v3 migration: enable showLogo by default
+    if ((p.getInt('ps_version') ?? 1) < _settingsVersion) {
+      await p.setBool('ps_show_logo', true);
       await p.setInt('ps_version', _settingsVersion);
     }
 
@@ -94,7 +98,7 @@ class PrinterSettings {
       marginRight: p.getDouble('ps_margin_right') ?? 0,
       marginTop: p.getDouble('ps_margin_top') ?? 0,
       marginBottom: p.getDouble('ps_margin_bottom') ?? 0,
-      showLogo: p.getBool('ps_show_logo') ?? false,
+      showLogo: p.getBool('ps_show_logo') ?? true,
       showAddress: p.getBool('ps_show_address') ?? true,
       showPhone: p.getBool('ps_show_phone') ?? true,
       showDescription: p.getBool('ps_show_description') ?? true,

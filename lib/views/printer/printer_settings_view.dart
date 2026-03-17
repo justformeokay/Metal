@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:esc_pos_utils_plus/esc_pos_utils_plus.dart';
 import '../../models/printer_settings.dart';
@@ -854,7 +857,48 @@ class _PrinterSettingsViewState extends State<PrinterSettingsView> {
 
   // ─── Actions ──────────────────────────────────────
 
+  /// Returns true if all required Bluetooth permissions are granted.
+  Future<bool> _checkBluetoothPermissions() async {
+    if (!Platform.isAndroid) return true;
+
+    final statuses = await [
+      Permission.bluetoothScan,
+      Permission.bluetoothConnect,
+      Permission.locationWhenInUse,
+    ].request();
+
+    final allGranted = statuses.values.every(
+      (s) => s.isGranted || s.isLimited,
+    );
+
+    if (!allGranted && mounted) {
+      final permanentlyDenied = statuses.values
+          .any((s) => s.isPermanentlyDenied);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            permanentlyDenied
+                ? 'Izin Bluetooth diblokir. Aktifkan di pengaturan aplikasi.'
+                : 'Izin Bluetooth diperlukan untuk mencari printer.',
+          ),
+          backgroundColor: Colors.red,
+          action: permanentlyDenied
+              ? SnackBarAction(
+                  label: 'Pengaturan',
+                  textColor: Colors.white,
+                  onPressed: openAppSettings,
+                )
+              : null,
+        ),
+      );
+    }
+    return allGranted;
+  }
+
   Future<void> _loadPairedDevices() async {
+    if (!await _checkBluetoothPermissions()) return;
+
     setState(() {
       _isScanning = true;
       _devices = [];

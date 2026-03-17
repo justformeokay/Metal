@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -74,8 +77,21 @@ class _AuthGateState extends State<AuthGate> {
   @override
   void initState() {
     super.initState();
+    _requestPermissions();
     _checkOnboarding();
     _checkVersionThenAuth();
+  }
+
+  /// Request runtime permissions needed by the app (Bluetooth, Camera, Location).
+  Future<void> _requestPermissions() async {
+    if (!Platform.isAndroid) return;
+    await [
+      Permission.bluetooth,
+      Permission.bluetoothScan,
+      Permission.bluetoothConnect,
+      Permission.locationWhenInUse,
+      Permission.camera,
+    ].request();
   }
 
   Future<void> _checkOnboarding() async {
