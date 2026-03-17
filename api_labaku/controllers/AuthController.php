@@ -9,6 +9,8 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../utils/Response.php';
 require_once __DIR__ . '/../utils/JwtHelper.php';
+require_once __DIR__ . '/../utils/Mailer.php';
+require_once __DIR__ . '/../utils/EmailTemplates.php';
 require_once __DIR__ . '/../middleware/AuthMiddleware.php';
 
 class AuthController
@@ -94,6 +96,14 @@ class AuthController
                 'email'   => $this->userModel->email
             ]);
 
+            // Send welcome email (fire-and-forget — do not block registration on failure)
+            try {
+                $html = EmailTemplates::welcomeEmail($this->userModel->name);
+                Mailer::send($this->userModel->email, 'Selamat Datang di Metal. 🎉', $html);
+            } catch (\Throwable $e) {
+                error_log('Welcome email failed for ' . $this->userModel->email . ': ' . $e->getMessage());
+            }
+
             Response::success('Registrasi berhasil', [
                 'token' => $token,
                 'user'  => [
@@ -158,8 +168,7 @@ class AuthController
     /**
      * POST /api/forgot-password
      * 
-     * Generate a password reset token.
-     * In production, this would send an email with a reset link.
+     * Send a 6-digit OTP to the user's email for password reset.
      * 
      * Request body:
      *   - email: string (required)
@@ -169,69 +178,112 @@ class AuthController
         $data = json_decode(file_get_contents('php://input'), true);
 
         if (empty($data['email'])) {
-            Response::error('Email is required', 400);
+            Response::error('Email wajib diisi', 400);
         }
 
         $user = $this->userModel->findByEmail($data['email']);
 
         // Always return success to prevent email enumeration
         if ($user === null) {
-            Response::success('If the email exists, a reset token has been generated');
+            Response::success('Jika email terdaftar, kode OTP telah dikirim');
             return;
         }
 
-        // Generate reset token
+        // Generate 6-digit OTP
+        $otpCode = str_pad((string) random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
+        $this->userModel->setOtp($user['id'], $otpCode);
+
+        // Send OTP email (fire-and-forget)
+        try {
+            $html = EmailTemplates::otpEmail($user['name'], $otpCode);
+            Mailer::send($user['email'], 'Kode OTP Reset Password - Metal.', $html);
+        } catch (\Throwable $e) {
+            error_log("OTP email failed: " . $e->getMessage());
+        }
+
+        Response::success('Kode OTP telah dikirim ke email Anda');
+    }
+
+    /**
+     * POST /api/verify-otp
+     * 
+     * Verify OTP and return a reset token for password change.
+     * 
+     * Request body:
+     *   - email:    string (required)
+     *   - otp_code: string (required, 6 digits)
+     */
+    public function verifyOtp(): void
+    {
+        $data = json_decode(file_get_contents('php://input'), true);
+
+        $errors = [];
+        if (empty($data['email']))    $errors[] = 'Email wajib diisi';
+        if (empty($data['otp_code'])) $errors[] = 'Kode OTP wajib diisi';
+
+        if (!empty($errors)) {
+            Response::validationError($errors);
+        }
+
+        $user = $this->userModel->verifyOtp($data['email'], $data['otp_code']);
+
+        if ($user === null) {
+            Response::error('Kode OTP tidak valid atau sudah kadaluarsa', 400);
+        }
+
+        // OTP valid — exchange for a secure reset token (15 min)
         $resetToken = bin2hex(random_bytes(32));
         $this->userModel->setResetToken($user['id'], $resetToken);
 
-        // In production, you should send this token via email
-        // For development, we return it directly
-        Response::success('Password reset token generated', [
+        Response::success('OTP berhasil diverifikasi', [
             'reset_token' => $resetToken,
-            'note'        => 'In production, this token would be sent via email'
+            'email'       => $user['email'],
         ]);
     }
 
     /**
      * POST /api/reset-password
      * 
-     * Reset password using the reset token.
+     * Reset password using the reset token from verify-otp.
      * 
      * Request body:
-     *   - email: string (required)
-     *   - reset_token: string (required)
-     *   - new_password: string (required, min 6 chars)
+     *   - email:                 string (required)
+     *   - reset_token:           string (required)
+     *   - new_password:          string (required, min 6 chars)
+     *   - password_confirmation: string (required, must match)
      */
     public function resetPassword(): void
     {
         $data = json_decode(file_get_contents('php://input'), true);
 
-        // Validate input
         $errors = [];
-        if (empty($data['email'])) $errors[] = 'Email is required';
-        if (empty($data['reset_token'])) $errors[] = 'Reset token is required';
+        if (empty($data['email']))         $errors[] = 'Email wajib diisi';
+        if (empty($data['reset_token']))   $errors[] = 'Token reset tidak valid';
         if (empty($data['new_password'])) {
-            $errors[] = 'New password is required';
+            $errors[] = 'Password baru wajib diisi';
         } elseif (strlen($data['new_password']) < 6) {
-            $errors[] = 'Password must be at least 6 characters';
+            $errors[] = 'Password minimal 6 karakter';
+        }
+        if (empty($data['password_confirmation'])) {
+            $errors[] = 'Konfirmasi password wajib diisi';
+        } elseif (($data['new_password'] ?? '') !== $data['password_confirmation']) {
+            $errors[] = 'Password dan konfirmasi tidak cocok';
         }
 
         if (!empty($errors)) {
             Response::validationError($errors);
         }
 
-        // Verify reset token
         $user = $this->userModel->verifyResetToken($data['email'], $data['reset_token']);
 
         if ($user === null) {
-            Response::error('Invalid or expired reset token', 400);
+            Response::error('Token reset tidak valid atau sudah kadaluarsa', 400);
         }
 
-        // Update password
         $this->userModel->updatePassword($user['id'], $data['new_password']);
         $this->userModel->clearResetToken($user['id']);
 
-        Response::success('Password has been reset successfully');
+        Response::success('Password berhasil diubah! Silakan login dengan password baru.');
     }
 
     /**

@@ -54,7 +54,9 @@
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Kamera digunakan untuk scan barcode produk</string>
+	<string>Kamera digunakan untuk scan barcode produk dan foto produk</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Izin diperlukan untuk memilih foto produk dari galeri</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Izin diperlukan untuk menyimpan barcode ke galeri foto</string>
 	<key>LSApplicationQueriesSchemes</key>

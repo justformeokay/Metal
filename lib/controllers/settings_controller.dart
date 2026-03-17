@@ -31,6 +31,7 @@ class SettingsController extends ChangeNotifier {
     } else if (saved == 'system') {
       _themeMode = ThemeMode.system;
     } else {
+      // Default to light theme
       _themeMode = ThemeMode.light;
     }
   }

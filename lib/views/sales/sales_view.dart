@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:labaku/utils/constants.dart';
@@ -5,7 +8,10 @@ import 'package:provider/provider.dart';
 import '../../controllers/product_controller.dart';
 import '../../controllers/transaction_controller.dart';
 import '../../models/bank.dart';
+import '../../models/member.dart';
+import '../../models/product.dart';
 import '../../services/bank_service.dart';
+import '../../services/database_service.dart';
 import '../../utils/currency_formatter.dart';
 import '../../utils/formatters.dart';
 import '../../utils/theme.dart';
@@ -23,6 +29,7 @@ class SalesView extends StatefulWidget {
 
 class _SalesViewState extends State<SalesView> {
   String _search = '';
+  bool _isGridView = false;
 
   @override
   void initState() {
@@ -92,6 +99,43 @@ class _SalesViewState extends State<SalesView> {
                       ),
                     ),
                     const SizedBox(width: 8),
+                    // View toggle button (List/Grid)
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey.shade800
+                            : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            onPressed: () => setState(() => _isGridView = false),
+                            icon: Icon(
+                              Icons.list_rounded,
+                              color: !_isGridView ? AppTheme.primaryColor : Colors.grey.shade500,
+                            ),
+                            tooltip: 'List View',
+                            iconSize: 20,
+                          ),
+                          Container(
+                            width: 1,
+                            height: 24,
+                            color: Colors.grey.shade400,
+                          ),
+                          IconButton(
+                            onPressed: () => setState(() => _isGridView = true),
+                            icon: Icon(
+                              Icons.grid_3x3_rounded,
+                              color: _isGridView ? AppTheme.primaryColor : Colors.grey.shade500,
+                            ),
+                            tooltip: 'Grid View',
+                            iconSize: 20,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     // Barcode scan button
                     Container(
                       decoration: BoxDecoration(
@@ -109,42 +153,72 @@ class _SalesViewState extends State<SalesView> {
                 ),
               ),
 
-          // ─── Product grid ──────────────────────────────
+          // ─── Product List/Grid ────────────────────────────
           Expanded(
             child: filteredProducts.isEmpty
-                ? Center(
-                    child: Text(
-                      'Tidak ada produk ditemukan',
-                      style: TextStyle(color: Colors.grey.shade500),
+                ? Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 50.0),
+                  child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.inventory_2_outlined,
+                            size: 64,
+                            color: Colors.grey.shade400,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Tidak ada produk ditemukan.\nTambahkan produk baru untuk memulai penjualan pada Tab Produk.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.grey.shade500),
+                          ),
+                        ],
+                      ),
                     ),
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    itemCount: filteredProducts.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final product = filteredProducts[index];
-                      return ProductTile(
-                        product: product,
-                        onTap: () => txCtrl.addToCart(product),
-                        trailing: product.stockQuantity > 0
-                            ? Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor
-                                      .withValues(alpha: 0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.add,
-                                    color: AppTheme.primaryColor, size: 20),
-                              )
-                            : Text('Habis',
-                                style: TextStyle(
-                                    color: Colors.grey.shade400,
-                                    fontWeight: FontWeight.w600)),
-                      );
-                    },
-                  ),
+                )
+                : _isGridView
+                    ? GridView.builder(
+                        padding: const EdgeInsets.all(8),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 0.57,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                        ),
+                        itemCount: filteredProducts.length,
+                        itemBuilder: (context, index) {
+                          final product = filteredProducts[index];
+                          return _buildProductGridCard(product, context, txCtrl);
+                        },
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        itemCount: filteredProducts.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final product = filteredProducts[index];
+                          return ProductTile(
+                            product: product,
+                            onTap: () => txCtrl.addToCart(product),
+                            trailing: product.stockQuantity > 0
+                                ? Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primaryColor
+                                          .withValues(alpha: 0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.add,
+                                        color: AppTheme.primaryColor, size: 20),
+                                  )
+                                : Text('Habis',
+                                    style: TextStyle(
+                                        color: Colors.grey.shade400,
+                                        fontWeight: FontWeight.w600)),
+                          );
+                        },
+                      ),
           ),
 
           // ─── Cart summary ─────────────────────────────
@@ -266,7 +340,12 @@ class _SalesViewState extends State<SalesView> {
                                       Text(
                                         item.hasDiscount
                                             ? (item.discountPercent > 0
-                                                ? 'Diskon ${item.discountPercent.toStringAsFixed(0)}%'
+                                                ? (item.product.isDiscountActive &&
+                                                        item.product.discountPercent == item.discountPercent &&
+                                                        item.product.discountLabel != null &&
+                                                        item.product.discountLabel!.isNotEmpty
+                                                    ? '${item.product.discountLabel} ${item.discountPercent.toStringAsFixed(0)}%'
+                                                    : 'Diskon ${item.discountPercent.toStringAsFixed(0)}%')
                                                 : 'Diskon ${formatCurrency(item.discountAmount)}')
                                             : 'Diskon',
                                         style: TextStyle(
@@ -374,27 +453,356 @@ class _SalesViewState extends State<SalesView> {
     );
   }
 
-  Widget _qtyButton(IconData icon, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Builder(
-        builder: (context) {
-          final isDark =
-              Theme.of(context).brightness == Brightness.dark;
-          return Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.grey.shade700
-                  : Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(8),
+  /// Pick a vivid accent colour deterministically from the product id/name.
+  Color _cardAccent(Product product) {
+    const palette = [
+      Color(0xFF10B981), // emerald
+      Color(0xFF3B82F6), // blue
+      Color(0xFFF59E0B), // amber
+      Color(0xFF8B5CF6), // violet
+      Color(0xFFEF4444), // red
+      Color(0xFF06B6D4), // cyan
+      Color(0xFFEC4899), // pink
+      Color(0xFF14B8A6), // teal
+      Color(0xFFF97316), // orange
+      Color(0xFF6366F1), // indigo
+    ];
+    final hash = product.id.hashCode;
+    return palette[hash.abs() % palette.length];
+  }
+
+  /// Build a product card for grid view layout
+  Widget _buildProductGridCard(
+    Product product,
+    BuildContext context,
+    TransactionController txCtrl,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isOutOfStock = product.stockQuantity == 0;
+    final isLowStock = !isOutOfStock && product.stockQuantity <= product.minStock;
+    final hasImage = product.imagePath != null && product.imagePath!.isNotEmpty;
+    final accent = _cardAccent(product);
+    final cardBg = isDark ? const Color(0xFF0F1117) : Colors.white;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: isOutOfStock
+            ? null
+            : () {
+                txCtrl.addToCart(product);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        const Icon(Icons.check_circle, color: Colors.white, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text('${product.name} ditambahkan ke keranjang')),
+                      ],
+                    ),
+                    backgroundColor: accent.withOpacity(0.85),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    duration: const Duration(milliseconds: 1200),
+                  ),
+                );
+              },
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: cardBg,
+            border: Border.all(
+              color: isOutOfStock
+                  ? Colors.grey.withOpacity(0.2)
+                  : accent.withOpacity(isDark ? 0.3 : 0.25),
+              width: 1,
             ),
-            child: Icon(icon, size: 16),
-          );
-        },
+            boxShadow: [
+              BoxShadow(
+                color: isOutOfStock
+                    ? Colors.black.withOpacity(0.05)
+                    : accent.withOpacity(isDark ? 0.12 : 0.08),
+                blurRadius: 18,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Image / icon area ──
+              Expanded(
+                flex: 5,
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // Tinted placeholder bg or image
+                      if (hasImage)
+                        Image.file(
+                          File(product.imagePath!),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              _gridCardImagePlaceholder(isDark, accent),
+                        )
+                      else
+                        _gridCardImagePlaceholder(isDark, accent),
+
+                      // Out-of-stock overlay
+                      if (isOutOfStock)
+                        Container(color: Colors.black.withOpacity(0.5)),
+
+                      // Bottom gradient — hanya show jika ada image
+                      if (hasImage)
+                        Positioned(
+                          left: 0, right: 0, bottom: 0, height: 36,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.bottomCenter,
+                                end: Alignment.topCenter,
+                                colors: [
+                                  cardBg.withOpacity(0.85),
+                                  Colors.transparent,
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      // Top-left accent dot stripe
+                      Positioned(
+                        top: 10, left: 10,
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 6, height: 6,
+                              decoration: BoxDecoration(
+                                color: isOutOfStock ? Colors.grey : accent,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Status badge
+                      if (isOutOfStock)
+                        Positioned(
+                          top: 8, right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade700,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text(
+                              'Habis',
+                              style: TextStyle(
+                                color: Colors.white, fontSize: 9,
+                                fontWeight: FontWeight.w800, letterSpacing: 0.4,
+                              ),
+                            ),
+                          ),
+                        )
+                      else if (isLowStock)
+                        Positioned(
+                          top: 8, right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade700,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text(
+                              'Menipis',
+                              style: TextStyle(
+                                color: Colors.white, fontSize: 9,
+                                fontWeight: FontWeight.w800, letterSpacing: 0.3,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ── Details ──
+              Expanded(
+                flex: 3,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        product.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          height: 1.25,
+                          color: isDark ? Colors.white : const Color(0xFF1A1F2E),
+                        ),
+                      ),
+                      const Spacer(),
+                      if (product.isDiscountActive) ...[
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                formatCurrency(product.discountedPrice),
+                                style: TextStyle(
+                                  color: isOutOfStock
+                                      ? Colors.grey
+                                      : const Color(0xFFF59E0B),
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 12,
+                                  letterSpacing: -0.3,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 3),
+                            Flexible(
+                              child: Text(
+                                formatCurrency(product.sellingPrice),
+                                style: TextStyle(
+                                  color: Colors.grey.shade500,
+                                  fontSize: 9,
+                                  decoration: TextDecoration.lineThrough,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 5, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF59E0B)
+                                    .withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                '${product.discountPercent.toStringAsFixed(0)}% OFF',
+                                style: const TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFFF59E0B),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ] else
+                        Text(
+                          formatCurrency(product.sellingPrice),
+                          style: TextStyle(
+                            color: isOutOfStock ? Colors.grey : accent,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 13,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Stok: ${product.stockQuantity} ${product.unit}',
+                        style: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontSize: 10,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ── Add Button ──
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                child: Container(
+                  width: double.infinity,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    gradient: isOutOfStock
+                        ? null
+                        : LinearGradient(
+                            colors: [accent, accent.withOpacity(0.75)],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                    color: isOutOfStock
+                        ? (isDark ? Colors.grey.shade800 : Colors.grey.shade100)
+                        : null,
+                    border: isOutOfStock
+                        ? Border.all(color: Colors.grey.withOpacity(0.2))
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        isOutOfStock
+                            ? Icons.remove_shopping_cart_outlined
+                            : Icons.add_rounded,
+                        size: 15,
+                        color: isOutOfStock ? Colors.grey.shade400 : Colors.white,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        isOutOfStock ? 'Stok Habis' : 'Tambah',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                          color: isOutOfStock ? Colors.grey.shade400 : Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
+    );
+  }
+
+  Widget _gridCardImagePlaceholder(bool isDark, [Color? accent]) {
+    final color = accent ?? Colors.grey;
+    return Container(
+      color: isDark
+          ? color.withOpacity(0.08)
+          : color.withOpacity(0.06),
+      child: Center(
+        child: Icon(
+          Icons.storefront_outlined,
+          size: 44,
+          color: isDark
+              ? color.withOpacity(0.35)
+              : color.withOpacity(0.25),
+        ),
+      ),
+    );
+  }
+
+  Widget _qtyButton(IconData icon, VoidCallback onTap) {
+    return _HoldToIncrementButton(
+      icon: icon,
+      onTap: onTap,
     );
   }
 
@@ -443,12 +851,16 @@ class _SalesViewState extends State<SalesView> {
     final paymentMethod = result['method'] as String;
     final transferBank = result['transferBank'] as String?;
     final transferAccountNumber = result['transferAccountNumber'] as String?;
+    final memberId = result['memberId'] as String?;
+    final memberDiscountApplied = result['memberDiscountApplied'] as double? ?? 0;
 
     final tx = await txCtrl.completeSale(
       amountPaid: amountPaid,
       paymentMethod: paymentMethod,
       transferBank: transferBank,
       transferAccountNumber: transferAccountNumber,
+      memberId: memberId,
+      memberDiscountApplied: memberDiscountApplied,
     );
     if (tx != null && mounted) {
       // Refresh product stock
@@ -728,6 +1140,11 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
   String _selectedPayment = 'Tunai';
   String? _selectedTransferBank;
   late Future<List<Bank>> _banksFuture;
+  Member? _selectedMember;
+  List<Member> _memberSearchResults = [];
+  bool _isSearchingMember = false;
+  final TextEditingController _memberSearchCtrl = TextEditingController();
+  final DatabaseService _db = DatabaseService();
 
   @override
   void initState() {
@@ -741,19 +1158,41 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
   void dispose() {
     _amountCtrl.dispose();
     _accountNumberCtrl.dispose();
+    _memberSearchCtrl.dispose();
     super.dispose();
   }
 
   double get _totalAmount => widget.transactionController.cartTotal;
+
+  double get _memberDiscountAmount =>
+      _selectedMember != null ? _totalAmount * (_selectedMember!.discountPercent / 100) : 0;
+
+  double get _finalTotal => _totalAmount - _memberDiscountAmount;
 
   double get _amountPaid {
     if (_amountCtrl.text.isEmpty) return 0;
     return double.tryParse(_amountCtrl.text.replaceAll('.', '')) ?? 0;
   }
 
-  double get _change => (_amountPaid - _totalAmount).clamp(0, double.infinity);
+  double get _change => (_amountPaid - _finalTotal).clamp(0, double.infinity);
 
-  bool get _isValid => _amountPaid >= _totalAmount;
+  bool get _isValid => _amountPaid >= _finalTotal;
+
+  Future<void> _searchMembers(String query) async {
+    if (query.length < 2) {
+      setState(() {
+        _memberSearchResults = [];
+        _isSearchingMember = false;
+      });
+      return;
+    }
+    setState(() => _isSearchingMember = true);
+    final results = await _db.searchMembers(query);
+    setState(() {
+      _memberSearchResults = results;
+      _isSearchingMember = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -914,7 +1353,7 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
                                   const SizedBox(width: 8),
                                   const Flexible(
                                     child: Text(
-                                      'Total',
+                                      'Subtotal',
                                       style: TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w600,
@@ -939,9 +1378,254 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
                             ),
                           ],
                         ),
+
+                        // Member discount row
+                        if (_selectedMember != null && _memberDiscountAmount > 0) ...[
+                          const Divider(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.card_membership_rounded,
+                                        size: 18,
+                                        color: AppTheme.accentColor),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
+                                        'Diskon Member (${_selectedMember!.discountPercent.toStringAsFixed(0)}%)',
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          color: AppTheme.accentColor,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                '-${formatCurrency(_memberDiscountAmount)}',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.accentColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Divider(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Total Bayar',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              Text(
+                                formatCurrency(_finalTotal),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.primaryColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
+                  const SizedBox(height: 24),
+
+                  // ─── Member Search ───
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.card_membership_rounded,
+                              size: 18,
+                              color: AppTheme.primaryColor),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Member (Opsional)',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      if (_selectedMember != null)
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppTheme.accentColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppTheme.accentColor.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 18,
+                                backgroundColor: AppTheme.accentColor,
+                                child: Text(
+                                  _selectedMember!.name[0].toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _selectedMember!.name,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Diskon ${_selectedMember!.discountPercent.toStringAsFixed(0)}%',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppTheme.accentColor,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              InkWell(
+                                onTap: () => setState(() {
+                                  _selectedMember = null;
+                                  _memberSearchCtrl.clear();
+                                  _memberSearchResults = [];
+                                }),
+                                child: const Icon(Icons.close_rounded,
+                                    size: 20, color: AppTheme.textSecondary),
+                              ),
+                            ],
+                          ),
+                        )
+                      else ...[
+                        TextField(
+                          controller: _memberSearchCtrl,
+                          decoration: InputDecoration(
+                            hintText: 'Cari nama atau telepon member...',
+                            hintStyle: TextStyle(
+                              color: Colors.grey.shade400,
+                              fontSize: 14,
+                            ),
+                            prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                            suffixIcon: _isSearchingMember
+                                ? const Padding(
+                                    padding: EdgeInsets.all(12),
+                                    child: SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    ),
+                                  )
+                                : null,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: AppTheme.border),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: AppTheme.border),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: AppTheme.primaryColor,
+                                width: 1.5,
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 10),
+                            isDense: true,
+                          ),
+                          onChanged: _searchMembers,
+                        ),
+                        if (_memberSearchResults.isNotEmpty)
+                          Container(
+                            margin: const EdgeInsets.only(top: 4),
+                            constraints: const BoxConstraints(maxHeight: 150),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppTheme.border),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: ListView.separated(
+                              shrinkWrap: true,
+                              padding: EdgeInsets.zero,
+                              itemCount: _memberSearchResults.length,
+                              separatorBuilder: (_, __) =>
+                                  const Divider(height: 1),
+                              itemBuilder: (context, index) {
+                                final member = _memberSearchResults[index];
+                                return ListTile(
+                                  dense: true,
+                                  visualDensity: VisualDensity.compact,
+                                  leading: CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: AppTheme.primaryColor,
+                                    child: Text(
+                                      member.name[0].toUpperCase(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                  title: Text(
+                                    member.name,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    '${member.phone} • Diskon ${member.discountPercent.toStringAsFixed(0)}%',
+                                    style: const TextStyle(fontSize: 11),
+                                  ),
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedMember = member;
+                                      _memberSearchCtrl.clear();
+                                      _memberSearchResults = [];
+                                    });
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                      ],
+                    ],
+                  ),
+
                   const SizedBox(height: 24),
 
                   // ─── Payment Method selector ───
@@ -1267,7 +1951,7 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
                                 Text(
                                   _isValid
                                       ? formatCurrency(_change)
-                                      : '-${formatCurrency((_totalAmount - _amountPaid).abs())}',
+                                      : '-${formatCurrency((_finalTotal - _amountPaid).abs())}',
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,
@@ -1321,7 +2005,7 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
                               ? () {
                                   // For non-cash, auto-set amount to total
                                   final finalAmount = _selectedPayment != 'Tunai'
-                                      ? _totalAmount
+                                      ? _finalTotal
                                       : _amountPaid;
 
                                   Navigator.pop(
@@ -1331,6 +2015,8 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
                                       'method': _selectedPayment,
                                       'transferBank': _selectedTransferBank,
                                       'transferAccountNumber': _accountNumberCtrl.text,
+                                      'memberId': _selectedMember?.id,
+                                      'memberDiscountApplied': _memberDiscountAmount,
                                     },
                                   );
                                 }
@@ -1368,6 +2054,84 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Hold-to-increment button for quantity adjustment — tap once or hold for auto-increment.
+/// While holding: increments 5 items per second (every 200ms after initial 500ms delay).
+class _HoldToIncrementButton extends StatefulWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _HoldToIncrementButton({
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  State<_HoldToIncrementButton> createState() => _HoldToIncrementButtonState();
+}
+
+class _HoldToIncrementButtonState extends State<_HoldToIncrementButton> {
+  Timer? _holdTimer;
+  Timer? _initialDelayTimer;
+  bool _isHolding = false;
+
+  @override
+  void dispose() {
+    _holdTimer?.cancel();
+    _initialDelayTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startHold() {
+    if (_isHolding) return;
+    _isHolding = true;
+
+    // Initial delay before starting auto-increment (500ms)
+    _initialDelayTimer = Timer(const Duration(milliseconds: 500), () {
+      if (!_isHolding) return;
+      // Start auto-increment: 200ms = 5 items per second
+      _holdTimer = Timer.periodic(const Duration(milliseconds: 200), (_) {
+        if (_isHolding) {
+          widget.onTap();
+        }
+      });
+    });
+  }
+
+  void _stopHold() {
+    _isHolding = false;
+    _holdTimer?.cancel();
+    _initialDelayTimer?.cancel();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return GestureDetector(
+      onTapDown: (_) => _startHold(),
+      onTapUp: (_) {
+        _stopHold();
+        // Single tap: execute once without hold delay
+        if (_holdTimer == null && _initialDelayTimer != null) {
+          widget.onTap();
+        }
+      },
+      onTapCancel: () => _stopHold(),
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: _isHolding
+              ? (isDark ? Colors.grey.shade600 : Colors.grey.shade300)
+              : (isDark ? Colors.grey.shade700 : Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(widget.icon, size: 16),
       ),
     );
   }

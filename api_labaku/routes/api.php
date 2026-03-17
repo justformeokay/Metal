@@ -33,6 +33,8 @@ require_once __DIR__ . '/../controllers/ExpenseController.php';
 require_once __DIR__ . '/../controllers/ReportController.php';
 require_once __DIR__ . '/../controllers/DashboardController.php';
 require_once __DIR__ . '/../controllers/BackupController.php';
+require_once __DIR__ . '/../controllers/MemberController.php';
+require_once __DIR__ . '/../controllers/UploadController.php';
 require_once __DIR__ . '/../utils/Response.php';
 
 // ============================================================
@@ -67,6 +69,7 @@ $routes = [
     ['POST',   '/api/register',            'AuthController',        'register'],
     ['POST',   '/api/login',               'AuthController',        'login'],
     ['POST',   '/api/forgot-password',     'AuthController',        'forgotPassword'],
+    ['POST',   '/api/verify-otp',          'AuthController',        'verifyOtp'],
     ['POST',   '/api/reset-password',      'AuthController',        'resetPassword'],
     ['POST',   '/api/refresh-token',       'AuthController',        'refreshToken'],
 
@@ -110,6 +113,15 @@ $routes = [
     ['GET',    '/api/backup/latest',      'BackupController',      'latest'],
     ['GET',    '/api/backup/history',     'BackupController',      'history'],
     ['GET',    '/api/backup/download',    'BackupController',      'download'],
+
+    // ---- Members (Protected) ----
+    ['POST',   '/api/member/create',      'MemberController',      'create'],
+    ['GET',    '/api/member/list',        'MemberController',      'list'],
+    ['PUT',    '/api/member/update',      'MemberController',      'update'],
+    ['DELETE', '/api/member/delete',      'MemberController',      'delete'],
+
+    // ---- Upload (Protected) ----
+    ['POST',   '/api/upload/store-logo',  'UploadController',      'uploadStoreLogo'],
 ];
 
 // ============================================================

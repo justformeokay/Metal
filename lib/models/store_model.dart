@@ -3,6 +3,8 @@ class StoreModel {
   final int id;
   final int userId;
   final String storeName;
+  final String? businessType;
+  final String? logoUrl;
   final String? phone;
   final String? address;
   final String? description;
@@ -12,6 +14,8 @@ class StoreModel {
     required this.id,
     required this.userId,
     required this.storeName,
+    this.businessType,
+    this.logoUrl,
     this.phone,
     this.address,
     this.description,
@@ -25,6 +29,8 @@ class StoreModel {
           ? json['user_id']
           : int.parse(json['user_id'].toString()),
       storeName: json['store_name'] as String,
+      businessType: json['business_type'] as String?,
+      logoUrl: json['logo_url'] as String?,
       phone: json['phone'] as String?,
       address: json['address'] as String?,
       description: json['description'] as String?,
@@ -37,6 +43,8 @@ class StoreModel {
       'id': id,
       'user_id': userId,
       'store_name': storeName,
+      'business_type': businessType,
+      'logo_url': logoUrl,
       'phone': phone,
       'address': address,
       'description': description,

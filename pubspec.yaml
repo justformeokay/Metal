@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.1.0+2
 
 environment:
   sdk: ^3.11.1
@@ -49,8 +49,9 @@ dependencies:
   pdf: ^3.11.2
   printing: ^5.14.2
 
-  # Bluetooth thermal printer
-  # esc_pos_utils and esc_pos_bluetooth: Use platform-specific Bluetooth packages
+  # Bluetooth thermal printer (Classic SPP)
+  print_bluetooth_thermal: ^1.1.1
+  esc_pos_utils_plus: ^2.0.4
 
   # Date formatting
   intl: ^0.20.2
@@ -77,6 +78,7 @@ dependencies:
 
   # Google Fonts
   google_fonts: ^7.0.0
+  icons_plus: ^5.0.0
 
 dev_dependencies:
   flutter_test:
@@ -132,8 +134,8 @@ flutter:
 # Run: flutter pub run flutter_launcher_icons
 # ============================================================
 flutter_launcher_icons:
+  image_path: "assets/icon.png"
   android: "launcher_icon"
   ios: true
-  image_path: "assets/ic_launcher.png"
   min_sdk_android: 21
   remove_alpha_ios: true

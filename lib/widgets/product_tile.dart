@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/product.dart';
 import '../utils/formatters.dart';
@@ -30,27 +31,8 @@ class ProductTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            // Product icon
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: Text(
-                  product.name.isNotEmpty
-                      ? product.name[0].toUpperCase()
-                      : '?',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.primaryColor,
-                  ),
-                ),
-              ),
-            ),
+            // Product icon / image
+            _buildLeading(),
             const SizedBox(width: 12),
 
             // Product info
@@ -70,14 +52,33 @@ class ProductTile extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Text(
-                        formatCurrency(product.sellingPrice),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.primaryColor,
+                      if (product.isDiscountActive) ...[
+                        Text(
+                          formatCurrency(product.discountedPrice),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFFF59E0B),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 5),
+                        Text(
+                          formatCurrency(product.sellingPrice),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade400,
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
+                      ] else
+                        Text(
+                          formatCurrency(product.sellingPrice),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.primaryColor,
+                          ),
+                        ),
                       if (showStock) ...[
                         const SizedBox(width: 12),
                         Container(
@@ -128,12 +129,79 @@ class ProductTile extends StatelessWidget {
                       ],
                     ],
                   ),
+                  if (product.isDiscountActive)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(5),
+                          border: Border.all(
+                              color: const Color(0xFFF59E0B)
+                                  .withValues(alpha: 0.35)),
+                        ),
+                        child: Text(
+                          product.discountLabel != null &&
+                                  product.discountLabel!.isNotEmpty
+                              ? '${product.discountLabel}  •  ${product.discountPercent.toStringAsFixed(0)}% OFF'
+                              : '${product.discountPercent.toStringAsFixed(0)}% OFF',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFFF59E0B),
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
 
             if (trailing != null) trailing!,
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLeading() {
+    final hasImage = product.imagePath != null &&
+        product.imagePath!.isNotEmpty &&
+        File(product.imagePath!).existsSync();
+
+    if (hasImage) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.file(
+          File(product.imagePath!),
+          width: 48,
+          height: 48,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _defaultIcon(),
+        ),
+      );
+    }
+    return _defaultIcon();
+  }
+
+  Widget _defaultIcon() {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Center(
+        child: Text(
+          product.name.isNotEmpty ? product.name[0].toUpperCase() : '?',
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.primaryColor,
+          ),
         ),
       ),
     );

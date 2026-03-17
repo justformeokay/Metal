@@ -106,6 +106,47 @@ class User
     }
 
     /**
+     * Store a 6-digit OTP for password reset.
+     * Reuses reset_token / reset_token_expiry columns with 'OTP:' prefix.
+     */
+    public function setOtp(int $userId, string $otpCode): bool
+    {
+        $hashedOtp = 'OTP:' . hash('sha256', $otpCode);
+        $expiry = date('Y-m-d H:i:s', strtotime('+10 minutes'));
+
+        $query = "UPDATE {$this->table}
+                  SET reset_token = :token, reset_token_expiry = :expiry
+                  WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':token', $hashedOtp);
+        $stmt->bindParam(':expiry', $expiry);
+        $stmt->bindParam(':id', $userId, PDO::PARAM_INT);
+
+        return $stmt->execute();
+    }
+
+    /**
+     * Verify OTP code for a given email.
+     */
+    public function verifyOtp(string $email, string $otpCode): ?array
+    {
+        $hashedOtp = 'OTP:' . hash('sha256', $otpCode);
+
+        $query = "SELECT id, email FROM {$this->table}
+                  WHERE email = :email
+                  AND reset_token = :token
+                  AND reset_token_expiry > NOW()
+                  LIMIT 1";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':email', $email);
+        $stmt->bindParam(':token', $hashedOtp);
+        $stmt->execute();
+
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
+    /**
      * Set password reset token
      */
     public function setResetToken(int $userId, string $token): bool

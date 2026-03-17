@@ -83,6 +83,8 @@ class SalesTransaction {
   final String paymentMethod; // Cash, QRIS, Gopay, OVO, Dana, Transfer
   final String? transferBank; // Bank code for transfer method
   final String? transferAccountNumber; // Account number for transfer
+  final String? memberId; // Linked member ID
+  final double memberDiscountApplied; // Member discount amount applied
 
   SalesTransaction({
     required this.id,
@@ -96,6 +98,8 @@ class SalesTransaction {
     this.paymentMethod = 'Tunai',
     this.transferBank,
     this.transferAccountNumber,
+    this.memberId,
+    this.memberDiscountApplied = 0,
   }) : date = date ?? DateTime.now();
 
   /// Change from payment.
@@ -116,6 +120,8 @@ class SalesTransaction {
       'paymentMethod': paymentMethod,
       'transferBank': transferBank,
       'transferAccountNumber': transferAccountNumber,
+      'memberId': memberId,
+      'memberDiscountApplied': memberDiscountApplied,
     };
   }
 
@@ -135,6 +141,8 @@ class SalesTransaction {
       paymentMethod: map['paymentMethod'] as String? ?? 'Tunai',
       transferBank: map['transferBank'] as String?,
       transferAccountNumber: map['transferAccountNumber'] as String?,
+      memberId: map['memberId'] as String?,
+      memberDiscountApplied: (map['memberDiscountApplied'] as num?)?.toDouble() ?? 0,
     );
   }
 }

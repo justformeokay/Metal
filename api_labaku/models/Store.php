@@ -15,6 +15,8 @@ class Store
     public ?int $id = null;
     public ?int $user_id = null;
     public ?string $store_name = null;
+    public ?string $business_type = null;
+    public ?string $logo_url = null;
     public ?string $phone = null;
     public ?string $address = null;
     public ?string $description = null;
@@ -30,12 +32,14 @@ class Store
      */
     public function create(): bool
     {
-        $query = "INSERT INTO {$this->table} (user_id, store_name, phone, address, description) 
-                  VALUES (:user_id, :store_name, :phone, :address, :description)";
+        $query = "INSERT INTO {$this->table} (user_id, store_name, business_type, logo_url, phone, address, description) 
+                  VALUES (:user_id, :store_name, :business_type, :logo_url, :phone, :address, :description)";
         $stmt = $this->conn->prepare($query);
 
         $stmt->bindParam(':user_id', $this->user_id, PDO::PARAM_INT);
         $stmt->bindParam(':store_name', $this->store_name);
+        $stmt->bindParam(':business_type', $this->business_type);
+        $stmt->bindParam(':logo_url', $this->logo_url);
         $stmt->bindParam(':phone', $this->phone);
         $stmt->bindParam(':address', $this->address);
         $stmt->bindParam(':description', $this->description);
@@ -53,7 +57,7 @@ class Store
      */
     public function getByUserId(int $userId): array
     {
-        $query = "SELECT id, user_id, store_name, phone, address, description, created_at 
+        $query = "SELECT id, user_id, store_name, business_type, logo_url, phone, address, description, created_at 
                   FROM {$this->table} 
                   WHERE user_id = :user_id 
                   ORDER BY created_at DESC";
@@ -69,7 +73,7 @@ class Store
      */
     public function findById(int $id): ?array
     {
-        $query = "SELECT id, user_id, store_name, phone, address, description, created_at 
+        $query = "SELECT id, user_id, store_name, business_type, logo_url, phone, address, description, created_at 
                   FROM {$this->table} 
                   WHERE id = :id LIMIT 1";
         $stmt = $this->conn->prepare($query);
@@ -86,11 +90,13 @@ class Store
     public function update(): bool
     {
         $query = "UPDATE {$this->table} 
-                  SET store_name = :store_name, phone = :phone, address = :address, description = :description 
+                  SET store_name = :store_name, business_type = :business_type, logo_url = :logo_url, phone = :phone, address = :address, description = :description 
                   WHERE id = :id AND user_id = :user_id";
         $stmt = $this->conn->prepare($query);
 
         $stmt->bindParam(':store_name', $this->store_name);
+        $stmt->bindParam(':business_type', $this->business_type);
+        $stmt->bindParam(':logo_url', $this->logo_url);
         $stmt->bindParam(':phone', $this->phone);
         $stmt->bindParam(':address', $this->address);
         $stmt->bindParam(':description', $this->description);

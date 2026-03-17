@@ -174,6 +174,7 @@ class AuthController extends ChangeNotifier {
 
   // ─── FORGOT PASSWORD ───────────────────────────────────────────────
 
+  /// POST /api/forgot-password — sends OTP to [email].
   Future<bool> forgotPassword(String email) async {
     _setLoading(true);
     clearMessages();
@@ -181,6 +182,82 @@ class AuthController extends ChangeNotifier {
     try {
       final AuthResponse response =
           await _authService.forgotPassword(email);
+
+      if (response.success) {
+        _successMessage = response.message;
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = response.message;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = 'Terjadi kesalahan. Coba lagi nanti.';
+      notifyListeners();
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // ─── VERIFY OTP ────────────────────────────────────────────────────
+
+  /// POST /api/verify-otp — verifies the 6-digit OTP.
+  /// Returns the [resetToken] string on success, or null on failure.
+  Future<String?> verifyOtp(String email, String otpCode) async {
+    _setLoading(true);
+    clearMessages();
+
+    try {
+      final AuthResponse response =
+          await _authService.verifyOtp(email, otpCode);
+
+      if (response.success && response.resetToken != null) {
+        _successMessage = response.message;
+        notifyListeners();
+        return response.resetToken;
+      } else {
+        _errorMessage = response.message.isNotEmpty
+            ? response.message
+            : 'Kode OTP tidak valid atau sudah kadaluarsa';
+        notifyListeners();
+        return null;
+      }
+    } catch (e) {
+      _errorMessage = 'Terjadi kesalahan. Coba lagi nanti.';
+      notifyListeners();
+      return null;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // ─── RESET PASSWORD ────────────────────────────────────────────────
+
+  /// POST /api/reset-password — sets a new password using the [resetToken].
+  Future<bool> resetPassword({
+    required String email,
+    required String resetToken,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    _setLoading(true);
+    clearMessages();
+
+    if (newPassword != confirmPassword) {
+      _errorMessage = 'Password dan konfirmasi tidak cocok';
+      _setLoading(false);
+      return false;
+    }
+
+    try {
+      final AuthResponse response = await _authService.resetPassword(
+        email: email,
+        resetToken: resetToken,
+        newPassword: newPassword,
+        confirmPassword: confirmPassword,
+      );
 
       if (response.success) {
         _successMessage = response.message;

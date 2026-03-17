@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
-import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/expense_controller.dart';
@@ -32,6 +30,7 @@ class _SettingsViewState extends State<SettingsView> {
   StoreModel? _userStore;
   String? _logoPath;
   bool _isLoading = true;
+  bool _isUploadingLogo = false;
   bool _isCloudSyncing = false;
   bool _autoBackupEnabled = true;
   DateTime? _lastCloudBackup;
@@ -42,7 +41,6 @@ class _SettingsViewState extends State<SettingsView> {
     super.initState();
     _loadUserStore();
     _loadCloudBackupState();
-    _loadLogoPath();
   }
 
   Future<void> _loadCloudBackupState() async {
@@ -63,6 +61,7 @@ class _SettingsViewState extends State<SettingsView> {
     if (result.stores.isNotEmpty && mounted) {
       setState(() {
         _userStore = result.stores.first; // Get first store
+        _logoPath = _userStore?.logoUrl; // Use server logo URL if available
         _isLoading = false;
       });
     } else if (mounted) {
@@ -70,51 +69,61 @@ class _SettingsViewState extends State<SettingsView> {
     }
   }
 
-  Future<void> _loadLogoPath() async {
-    final prefs = await SharedPreferences.getInstance();
-    final path = prefs.getString('store_logo_path');
-    if (mounted) {
-      setState(() => _logoPath = path);
-    }
-  }
-
   Future<void> _pickLogoImage() async {
     final pickedFile = await _imagePicker.pickImage(
       source: ImageSource.gallery,
-      maxWidth: 500,
-      maxHeight: 500,
+      maxWidth: 1024,
+      maxHeight: 1024,
       imageQuality: 85,
     );
 
-    if (pickedFile != null) {
-      await _saveLogoImage(File(pickedFile.path));
-    }
-  }
-
-  Future<void> _saveLogoImage(File imageFile) async {
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      final logoDir = Directory('${dir.path}/labaku/logo');
-      if (!await logoDir.exists()) {
-        await logoDir.create(recursive: true);
-      }
-
-      final logoPath = '${logoDir.path}/store_logo.png';
-      await imageFile.copy(logoPath);
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('store_logo_path', logoPath);
+    if (pickedFile != null && _userStore != null) {
+      setState(() => _isUploadingLogo = true);
+      
+      // Step 1: Upload logo file to get URL
+      final result = await _storeService.uploadStoreLogo(
+        logoFile: File(pickedFile.path),
+        storeName: _userStore!.storeName,
+      );
 
       if (mounted) {
-        setState(() => _logoPath = logoPath);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Logo berhasil disimpan')),
-        );
+        if (result.success && result.url != null) {
+          // Step 2: Update store record in database with new logo URL
+          final updateResult = await _storeService.updateStore(
+            storeId: _userStore!.id,
+            storeName: _userStore!.storeName,
+            phone: _userStore!.phone,
+            address: _userStore!.address,
+            description: _userStore!.description,
+            logoUrl: result.url,
+          );
+
+          setState(() => _isUploadingLogo = false);
+
+          if (updateResult.success && updateResult.store != null) {
+            setState(() {
+              _userStore = updateResult.store;
+              _logoPath = updateResult.store!.logoUrl;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Logo berhasil disimpan')),
+            );
+          } else {
+            // Upload succeeded but update failed — still show the logo locally
+            setState(() {
+              _logoPath = result.url;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Logo diupload tapi gagal menyimpan. TRY REFRESH')),
+            );
+          }
+        } else {
+          setState(() => _isUploadingLogo = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gagal upload logo: ${result.message}')),
+          );
+        }
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menyimpan logo: $e')),
-      );
     }
   }
 
@@ -192,13 +201,24 @@ class _SettingsViewState extends State<SettingsView> {
               ),
               const Divider(height: 1),
               ListTile(
-                leading: const Icon(Icons.image_rounded),
+                leading: _isUploadingLogo
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.image_rounded),
                 title: const Text('Logo Usaha'),
-                subtitle: _logoPath != null && File(_logoPath!).existsSync()
-                    ? const Text('Logo tersimpan')
-                    : const Text('Belum ada logo'),
+                subtitle: _isUploadingLogo
+                    ? const Text('Mengunggah...')
+                    : (_logoPath != null
+                        ? (_logoPath!.startsWith('http')
+                            ? const Text('Logo tersimpan di server')
+                            : const Text('Logo tersimpan (lokal)')
+                        )
+                        : const Text('Belum ada logo')),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: _isLoading ? null : _pickLogoImage,
+                onTap: (_isLoading || _isUploadingLogo) ? null : _pickLogoImage,
               ),
             ],
           ),

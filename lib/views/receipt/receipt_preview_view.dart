@@ -3,11 +3,12 @@ import 'package:share_plus/share_plus.dart';
 import 'dart:ui' as ui;
 import 'dart:io';
 import 'package:flutter/rendering.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/bank.dart';
+import '../../models/member.dart';
 import '../../models/store_model.dart';
 import '../../models/transaction.dart';
 import '../../services/bank_service.dart';
+import '../../services/database_service.dart';
 import '../../utils/formatters.dart';
 import '../../services/store_service.dart';
 import '../receipt/bluetooth_printer_view.dart';
@@ -28,6 +29,7 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
   StoreModel? _userStore;
   Bank? _transferBank;
   String? _logoPath;
+  Member? _member;
   bool _isLoading = true;
   bool _isSharing = false;
 
@@ -36,14 +38,27 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
     super.initState();
     _loadUserStore();
     _loadTransferBank();
-    _loadLogoPath();
+    _loadMember();
   }
 
-  Future<void> _loadLogoPath() async {
-    final prefs = await SharedPreferences.getInstance();
-    final path = prefs.getString('store_logo_path');
-    if (mounted) {
-      setState(() => _logoPath = path);
+  Future<void> _loadMember() async {
+    if (widget.transaction.memberId != null) {
+      final member = await DatabaseService().getMemberById(widget.transaction.memberId!);
+      if (mounted) setState(() => _member = member);
+    }
+  }
+
+  Future<void> _loadUserStore() async {
+    final result = await _storeService.getMyStores();
+    if (result.stores.isNotEmpty && mounted) {
+      setState(() {
+        _userStore = result.stores.first;
+        // Prioritize server logo URL, otherwise load from local prefs
+        _logoPath = _userStore?.logoUrl;
+        _isLoading = false;
+      });
+    } else if (mounted) {
+      setState(() => _isLoading = false);
     }
   }
 
@@ -53,18 +68,6 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
       final bank = await BankService()
           .getBankByCodeAsync(widget.transaction.transferBank!);
       if (mounted) setState(() => _transferBank = bank);
-    }
-  }
-
-  Future<void> _loadUserStore() async {
-    final result = await _storeService.getMyStores();
-    if (result.stores.isNotEmpty && mounted) {
-      setState(() {
-        _userStore = result.stores.first;
-        _isLoading = false;
-      });
-    } else if (mounted) {
-      setState(() => _isLoading = false);
     }
   }
 
@@ -118,15 +121,23 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // ─── Header ──────────────────────────────
-                if (_logoPath != null && File(_logoPath!).existsSync())
+                if (_logoPath != null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: SizedBox(
                       width: 160,
-                      child: Image.file(
-                        File(_logoPath!),
-                        fit: BoxFit.contain,
-                      ),
+                      child: _logoPath!.startsWith('http')
+                          ? Image.network(
+                              _logoPath!,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                            )
+                          : File(_logoPath!).existsSync()
+                              ? Image.file(
+                                  File(_logoPath!),
+                                  fit: BoxFit.contain,
+                                )
+                              : const SizedBox.shrink(),
                     ),
                   ),
                 Text(
@@ -274,6 +285,32 @@ class _ReceiptPreviewViewState extends State<ReceiptPreviewView> {
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                             color: Colors.red,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // ─── Member Discount ─────────────────────
+                if (widget.transaction.memberDiscountApplied > 0 && _member != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Diskon Member (${_member!.name})',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Colors.green,
+                          ),
+                        ),
+                        Text(
+                          '-${formatCurrency(widget.transaction.memberDiscountApplied)}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.green,
                           ),
                         ),
                       ],
