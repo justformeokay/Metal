@@ -181,7 +181,7 @@ class _SalesViewState extends State<SalesView> {
                         padding: const EdgeInsets.all(8),
                         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
-                          childAspectRatio: 0.68,
+                          childAspectRatio: 0.57,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
                         ),
@@ -339,7 +339,12 @@ class _SalesViewState extends State<SalesView> {
                                       Text(
                                         item.hasDiscount
                                             ? (item.discountPercent > 0
-                                                ? 'Diskon ${item.discountPercent.toStringAsFixed(0)}%'
+                                                ? (item.product.isDiscountActive &&
+                                                        item.product.discountPercent == item.discountPercent &&
+                                                        item.product.discountLabel != null &&
+                                                        item.product.discountLabel!.isNotEmpty
+                                                    ? '${item.product.discountLabel} ${item.discountPercent.toStringAsFixed(0)}%'
+                                                    : 'Diskon ${item.discountPercent.toStringAsFixed(0)}%')
                                                 : 'Diskon ${formatCurrency(item.discountAmount)}')
                                             : 'Diskon',
                                         style: TextStyle(
@@ -631,6 +636,7 @@ class _SalesViewState extends State<SalesView> {
                   padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         product.name,
@@ -644,15 +650,69 @@ class _SalesViewState extends State<SalesView> {
                         ),
                       ),
                       const Spacer(),
-                      Text(
-                        formatCurrency(product.sellingPrice),
-                        style: TextStyle(
-                          color: isOutOfStock ? Colors.grey : accent,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 13,
-                          letterSpacing: -0.3,
+                      if (product.isDiscountActive) ...[
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                formatCurrency(product.discountedPrice),
+                                style: TextStyle(
+                                  color: isOutOfStock
+                                      ? Colors.grey
+                                      : const Color(0xFFF59E0B),
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 12,
+                                  letterSpacing: -0.3,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 3),
+                            Flexible(
+                              child: Text(
+                                formatCurrency(product.sellingPrice),
+                                style: TextStyle(
+                                  color: Colors.grey.shade500,
+                                  fontSize: 9,
+                                  decoration: TextDecoration.lineThrough,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 5, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF59E0B)
+                                    .withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                '${product.discountPercent.toStringAsFixed(0)}% OFF',
+                                style: const TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFFF59E0B),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ] else
+                        Text(
+                          formatCurrency(product.sellingPrice),
+                          style: TextStyle(
+                            color: isOutOfStock ? Colors.grey : accent,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 13,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
                       const SizedBox(height: 2),
                       Text(
                         'Stok: ${product.stockQuantity} ${product.unit}',
@@ -661,7 +721,7 @@ class _SalesViewState extends State<SalesView> {
                           fontSize: 10,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                     ],
                   ),
                 ),

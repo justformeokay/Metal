@@ -76,7 +76,11 @@ class TransactionController extends ChangeNotifier {
       }
     } else {
       if (product.stockQuantity > 0) {
-        _cart.add(CartItem(product: product));
+        _cart.add(CartItem(
+          product: product,
+          discountPercent:
+              product.isDiscountActive ? product.discountPercent : 0,
+        ));
       }
     }
     notifyListeners();
