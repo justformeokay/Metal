@@ -1,4 +1,4 @@
-package com.example.labaku
+package com.kdi.metal
 
 import io.flutter.embedding.android.FlutterActivity
 
