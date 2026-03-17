@@ -11,6 +11,13 @@ import '../models/transaction.dart';
 import '../models/store_model.dart';
 import '../utils/formatters.dart';
 
+/// Result from receipt generation containing image and text bytes separately.
+class _ReceiptBytes {
+  final List<int>? imageBytes;
+  final List<int> textBytes;
+  _ReceiptBytes({this.imageBytes, required this.textBytes});
+}
+
 /// Service for Bluetooth Classic thermal printer operations.
 /// Singleton — connection persists across pages.
 class ThermalPrinterService {
@@ -87,19 +94,44 @@ class ThermalPrinterService {
 
     final settings = await PrinterSettings.load();
 
-    final bytes = await _generateReceiptBytes(
+    // Print first copy
+    await _printReceiptOnce(
       transaction: transaction,
       store: store,
       memberName: memberName,
       settings: settings,
     );
 
-    await _writeBytes(bytes);
-
+    // Print duplicate if enabled
     if (settings.printDuplicate) {
       await Future.delayed(const Duration(milliseconds: 500));
-      await _writeBytes(bytes);
+      await _printReceiptOnce(
+        transaction: transaction,
+        store: store,
+        memberName: memberName,
+        settings: settings,
+      );
     }
+  }
+
+  /// Internal: print one copy of receipt.
+  Future<void> _printReceiptOnce({
+    required SalesTransaction transaction,
+    required StoreModel store,
+    String? memberName,
+    required PrinterSettings settings,
+  }) async {
+    final result = await _generateReceiptBytes(
+      transaction: transaction,
+      store: store,
+      memberName: memberName,
+      settings: settings,
+    );
+    // Image bytes sent separately to avoid chunking issues
+    if (result.imageBytes != null) {
+      await _writeImageBytes(result.imageBytes!);
+    }
+    await _writeBytes(result.textBytes);
   }
 
   /// Print raw ESC/POS bytes directly.
@@ -113,7 +145,7 @@ class ThermalPrinterService {
   /// Write bytes to printer via Bluetooth Classic SPP.
   /// Sends data in chunks to avoid Bluetooth buffer overflow.
   Future<void> _writeBytes(List<int> bytes) async {
-    const chunkSize = 500;
+    const chunkSize = 512;
     for (var i = 0; i < bytes.length; i += chunkSize) {
       final end = (i + chunkSize > bytes.length) ? bytes.length : i + chunkSize;
       final chunk = bytes.sublist(i, end);
@@ -125,7 +157,27 @@ class ThermalPrinterService {
       }
       // Small delay between chunks to let printer process
       if (end < bytes.length) {
-        await Future.delayed(const Duration(milliseconds: 50));
+        await Future.delayed(const Duration(milliseconds: 30));
+      }
+    }
+  }
+
+  /// Write image raster bytes - sent in larger chunks to keep command intact.
+  /// GS v 0 command must not be split from its data.
+  Future<void> _writeImageBytes(List<int> bytes) async {
+    // Send in ~2KB chunks - large enough to keep header+data together for most images
+    const chunkSize = 2048;
+    for (var i = 0; i < bytes.length; i += chunkSize) {
+      final end = (i + chunkSize > bytes.length) ? bytes.length : i + chunkSize;
+      final chunk = bytes.sublist(i, end);
+      final result = await PrintBluetoothThermal.writeBytes(chunk);
+      if (!result) {
+        _connected = false;
+        _connectedName = null;
+        throw Exception('Gagal mengirim data ke printer. Koneksi terputus.');
+      }
+      if (end < bytes.length) {
+        await Future.delayed(const Duration(milliseconds: 100));
       }
     }
   }
@@ -230,7 +282,7 @@ class ThermalPrinterService {
   }
 
   /// Generate ESC/POS receipt bytes using settings.
-  Future<List<int>> _generateReceiptBytes({
+  Future<_ReceiptBytes> _generateReceiptBytes({
     required SalesTransaction transaction,
     required StoreModel store,
     String? memberName,
@@ -242,6 +294,7 @@ class ThermalPrinterService {
         : PaperSize.mm58;
     final generator = Generator(paper, profile);
     List<int> bytes = [];
+    List<int>? imageBytes;
 
     // Font size based on settings
     final headerHeight = settings.fontScale >= 2
@@ -270,7 +323,7 @@ class ThermalPrinterService {
           interpolation: img.Interpolation.average,
         );
         // Use custom raster generation (bypasses library bugs)
-        bytes += _imageToEscPos(resized, align: PosAlign.center);
+        imageBytes = _imageToEscPos(resized, align: PosAlign.center);
         bytes += generator.feed(1);
       }
     }
@@ -467,6 +520,6 @@ class ThermalPrinterService {
     bytes += generator.feed(settings.feedLinesAfter + 3);
     if (settings.autoCut) bytes += generator.cut();
 
-    return bytes;
+    return _ReceiptBytes(imageBytes: imageBytes, textBytes: bytes);
   }
 }
