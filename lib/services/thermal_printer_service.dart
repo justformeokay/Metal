@@ -152,6 +152,57 @@ class ThermalPrinterService {
     }
   }
 
+  /// Generate raw ESC/POS raster bytes for an image (GS v 0).
+  /// Bypasses esc_pos_utils_plus's buggy _toRasterFormat.
+  List<int> _imageToEscPos(img.Image srcImage, {PosAlign align = PosAlign.center}) {
+    // Convert to grayscale
+    final grayImg = img.grayscale(img.Image.from(srcImage));
+    final int widthPx = grayImg.width;
+    final int heightPx = grayImg.height;
+    // Width in bytes (8 pixels per byte)
+    final int widthBytes = (widthPx + 7) ~/ 8;
+
+    // Build raster data: 1 bit per pixel, MSB first, black = 1
+    final rasterData = <int>[];
+    for (int y = 0; y < heightPx; y++) {
+      for (int byteX = 0; byteX < widthBytes; byteX++) {
+        int byte = 0;
+        for (int bit = 0; bit < 8; bit++) {
+          final int x = byteX * 8 + bit;
+          if (x < widthPx) {
+            final pixel = grayImg.getPixel(x, y);
+            // Luminance: use red channel (already grayscale, all channels equal)
+            final int lum = pixel.r.toInt();
+            // Black pixel = luminance < 128 → set bit to 1
+            if (lum < 128) {
+              byte |= (0x80 >> bit);
+            }
+          }
+          // Pixels beyond image width stay 0 (white)
+        }
+        rasterData.add(byte);
+      }
+    }
+
+    final List<int> bytes = [];
+
+    // Set alignment: ESC a n
+    final int alignByte = align == PosAlign.left ? 0 : (align == PosAlign.right ? 2 : 1);
+    bytes.addAll([0x1B, 0x61, alignByte]);
+
+    // GS v 0 — print raster bit image
+    // 1B 76 30 m xL xH yL yH [data]
+    bytes.addAll([
+      0x1D, 0x76, 0x30,
+      0, // m = 0 (normal density)
+      widthBytes & 0xFF, (widthBytes >> 8) & 0xFF, // xL xH
+      heightPx & 0xFF, (heightPx >> 8) & 0xFF, // yL yH
+    ]);
+    bytes.addAll(rasterData);
+
+    return bytes;
+  }
+
   /// Sanitize text for ESC/POS printer (ASCII-safe).
   String _sanitize(String text) {
     return text
@@ -193,11 +244,10 @@ class ThermalPrinterService {
     if (settings.showLogo && store.logoUrl != null && store.logoUrl!.isNotEmpty) {
       final logoImg = await _loadLogoImage(store.logoUrl);
       if (logoImg != null) {
-        // Max print width in dots (must be multiple of 8)
+        // Max print width in dots
         final maxWidth = settings.paperSize == '80mm' ? 576 : 384;
-        // Scale down if wider, keep aspect ratio
         int targetW = logoImg.width > maxWidth ? maxWidth : logoImg.width;
-        // Round down to nearest multiple of 8 (raster format requirement)
+        // Round down to multiple of 8
         targetW = (targetW ~/ 8) * 8;
         if (targetW < 8) targetW = 8;
 
@@ -206,7 +256,8 @@ class ThermalPrinterService {
           width: targetW,
           interpolation: img.Interpolation.average,
         );
-        bytes += generator.imageRaster(resized, align: PosAlign.center);
+        // Use custom raster generation (bypasses library bugs)
+        bytes += _imageToEscPos(resized, align: PosAlign.center);
         bytes += generator.feed(1);
       }
     }
@@ -391,7 +442,8 @@ class ThermalPrinterService {
       bytes += generator.feed(settings.marginBottom.toInt().clamp(0, 10));
     }
 
-    bytes += generator.feed(settings.feedLinesAfter);
+    // Extra feed so footer text doesn't get cut when tearing
+    bytes += generator.feed(settings.feedLinesAfter + 3);
     if (settings.autoCut) bytes += generator.cut();
 
     return bytes;
