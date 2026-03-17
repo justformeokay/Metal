@@ -34,11 +34,11 @@ class AppController
         // Edit these values when you publish a new release.
         // ──────────────────────────────────────────────────────────────
 
-        $latestVersion   = '1.0.0';
+        $latestVersion   = '1.1.0';
         $minVersion      = '1.0.0';   // Versions below this are force-blocked
-        $forceUpdate     = false;       // Set to true to require update
-        $updateUrl       = '';          // e.g. https://play.google.com/store/apps/...
-        $releaseNotes    = 'Versi pertama LabaKu — manajemen toko UMKM serba bisa.';
+        $forceUpdate     = true;      // Set to true to require update
+        $updateUrl       = 'https://ucs.mathlab.id/assets/metal.apk';
+        $releaseNotes    = "✨ v1.1.0 Updates:\n🎯 Dashboard Analytics — Lihat penjualan hari ini dengan chart jam, kategori, & produk terlaris\n⏱️ Smart Quantity Buttons — Tap sekali atau hold untuk increment cepat (5 item/detik)\n🎨 Light Theme Default — Tema terang sebagai default dengan penyimpanan otomatis\n💛 Discount Feature — Kelola diskon produk & lihat otomatis saat checkout\n🔧 UI Improvements — Perbaikan grid card & overflow fixes\n\n📌 v1.0.0: Versi pertama LabaKu — manajemen toko UMKM serba bisa.";
         $maintenanceMode = false;
         $maintenanceMsg  = 'Sistem sedang dalam pemeliharaan. Mohon coba beberapa saat lagi.';
 

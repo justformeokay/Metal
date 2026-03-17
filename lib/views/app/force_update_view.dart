@@ -304,12 +304,17 @@ class _ReleaseNotesCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            notes,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.75),
-              fontSize: 13,
-              height: 1.5,
+          SizedBox(
+            height: 120,
+            child: SingleChildScrollView(
+              child: Text(
+                notes,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.75),
+                  fontSize: 13,
+                  height: 1.5,
+                ),
+              ),
             ),
           ),
         ],
