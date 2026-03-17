@@ -1259,12 +1259,13 @@ class _DashboardViewState extends State<DashboardView> {
           ),
           const SizedBox(height: 16),
           SizedBox(
-            height: 130,
+            height: 160,
             child: BarChart(
               BarChartData(
                 alignment: BarChartAlignment.spaceAround,
                 maxY: maxY <= 0 ? 100 : maxY,
                 barTouchData: BarTouchData(
+                  enabled: true,
                   touchTooltipData: BarTouchTooltipData(
                     getTooltipItem: (group, gIndex, rod, rIndex) {
                       final hour = data[group.x].hour;
@@ -1272,7 +1273,7 @@ class _DashboardViewState extends State<DashboardView> {
                         '${hour.toString().padLeft(2, '0')}:00\n${formatCurrencyShort(rod.toY)}',
                         const TextStyle(
                             color: Colors.white,
-                            fontSize: 11,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600),
                       );
                     },
@@ -1288,38 +1289,63 @@ class _DashboardViewState extends State<DashboardView> {
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
+                      reservedSize: 28,
                       getTitlesWidget: (value, meta) {
                         final idx = value.toInt();
                         if (idx >= 0 && idx < data.length) {
                           final h = data[idx].hour;
-                          if (h % 3 == 0) {
+                          // Show every 2 hours (6, 8, 10, 12, 14, 16, 18, 20, 22)
+                          if (h % 2 == 0) {
                             return Text(
-                              '$h',
+                              '${h.toString().padLeft(2, '0')}:00',
                               style: TextStyle(
-                                fontSize: 9,
-                                color: Colors.grey.shade500,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey.shade600,
                               ),
                             );
                           }
                         }
-                        return const Text('');
+                        return const SizedBox.shrink();
                       },
                     ),
                   ),
                 ),
-                gridData: const FlGridData(show: false),
+                gridData: FlGridData(
+                  show: true,
+                  drawHorizontalLine: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: maxY <= 0 ? 100 : maxY / 4,
+                  getDrawingHorizontalLine: (value) {
+                    return FlLine(
+                      color: Colors.grey.withValues(alpha: 0.15),
+                      strokeWidth: 0.8,
+                    );
+                  },
+                ),
                 borderData: FlBorderData(show: false),
                 barGroups: List.generate(data.length, (i) {
-                  return BarChartGroupData(x: i, barRods: [
-                    BarChartRodData(
-                      toY: data[i].sales,
-                      color: data[i].sales > 0
-                          ? AppTheme.primaryColor
-                          : AppTheme.primaryColor.withValues(alpha: 0.2),
-                      width: 8,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ]);
+                  final sales = data[i].sales;
+                  return BarChartGroupData(
+                    x: i,
+                    barRods: [
+                      BarChartRodData(
+                        toY: sales,
+                        color: sales > 0
+                            ? AppTheme.primaryColor
+                            : AppTheme.primaryColor.withValues(alpha: 0.2),
+                        width: 6,
+                        borderRadius: BorderRadius.circular(3),
+                        rodStackItems: [
+                          BarChartRodStackItem(
+                            0,
+                            sales,
+                            AppTheme.primaryColor,
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
                 }),
               ),
             ),

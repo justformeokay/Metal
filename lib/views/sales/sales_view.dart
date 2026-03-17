@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -799,26 +800,9 @@ class _SalesViewState extends State<SalesView> {
   }
 
   Widget _qtyButton(IconData icon, VoidCallback onTap) {
-    return InkWell(
+    return _HoldToIncrementButton(
+      icon: icon,
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Builder(
-        builder: (context) {
-          final isDark =
-              Theme.of(context).brightness == Brightness.dark;
-          return Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.grey.shade700
-                  : Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, size: 16),
-          );
-        },
-      ),
     );
   }
 
@@ -2070,6 +2054,84 @@ class _PaymentConfirmationDialogState extends State<_PaymentConfirmationDialog> 
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Hold-to-increment button for quantity adjustment — tap once or hold for auto-increment.
+/// While holding: increments 5 items per second (every 200ms after initial 500ms delay).
+class _HoldToIncrementButton extends StatefulWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _HoldToIncrementButton({
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  State<_HoldToIncrementButton> createState() => _HoldToIncrementButtonState();
+}
+
+class _HoldToIncrementButtonState extends State<_HoldToIncrementButton> {
+  Timer? _holdTimer;
+  Timer? _initialDelayTimer;
+  bool _isHolding = false;
+
+  @override
+  void dispose() {
+    _holdTimer?.cancel();
+    _initialDelayTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startHold() {
+    if (_isHolding) return;
+    _isHolding = true;
+
+    // Initial delay before starting auto-increment (500ms)
+    _initialDelayTimer = Timer(const Duration(milliseconds: 500), () {
+      if (!_isHolding) return;
+      // Start auto-increment: 200ms = 5 items per second
+      _holdTimer = Timer.periodic(const Duration(milliseconds: 200), (_) {
+        if (_isHolding) {
+          widget.onTap();
+        }
+      });
+    });
+  }
+
+  void _stopHold() {
+    _isHolding = false;
+    _holdTimer?.cancel();
+    _initialDelayTimer?.cancel();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return GestureDetector(
+      onTapDown: (_) => _startHold(),
+      onTapUp: (_) {
+        _stopHold();
+        // Single tap: execute once without hold delay
+        if (_holdTimer == null && _initialDelayTimer != null) {
+          widget.onTap();
+        }
+      },
+      onTapCancel: () => _stopHold(),
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: _isHolding
+              ? (isDark ? Colors.grey.shade600 : Colors.grey.shade300)
+              : (isDark ? Colors.grey.shade700 : Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(widget.icon, size: 16),
       ),
     );
   }
